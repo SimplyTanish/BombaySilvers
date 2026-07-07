@@ -45,7 +45,7 @@ src/
 ## Notes
 
 - All data is mocked/static — no backend is connected
-- Vite server configured for `host: "0.0.0.0"` to work in Replit's proxied preview
+- Vite dev server is configured with `host: "0.0.0.0"` and `allowedHosts: true` so the Replit proxied preview (dynamic `*.pike.replit.dev` subdomain) can reach it. This is dev-only; production is served by Nitro, not the Vite dev server.
 
 ## User preferences
 

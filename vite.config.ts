@@ -14,9 +14,15 @@ export default defineConfig({
   },
   vite: {
     server: {
+      // Replit proxies the preview through a dynamic *.pike.replit.dev subdomain.
+      // host: "0.0.0.0" is required so Vite binds on all interfaces (not just lo).
+      // allowedHosts: true is required because the subdomain changes per-repl and
+      // cannot be statically allowlisted. This is dev-only; production builds are
+      // served by Nitro, not the Vite dev server.
       host: "0.0.0.0",
       port: 5173,
       strictPort: true,
+      allowedHosts: true,
     },
   },
 });
