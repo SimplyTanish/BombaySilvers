@@ -1,6 +1,9 @@
 /**
  * Apply all Supabase migrations to the database.
  * Run: node scripts/apply-migrations.mjs
+ *
+ * Each migration file is wrapped in an explicit transaction so a mid-file
+ * failure rolls back cleanly rather than leaving partial state.
  */
 import pg from "pg";
 import { readFileSync } from "node:fs";
@@ -12,18 +15,24 @@ const root = resolve(__dirname, "..");
 
 const { Client } = pg;
 
-const password = process.env.SUPABASE_DB_PASSWORD;
-const url = process.env.SUPABASE_URL; // https://ifipekomyainduotbjqd.supabase.co
+const rawPassword = process.env.SUPABASE_DB_PASSWORD;
+const supabaseUrl = process.env.SUPABASE_URL; // https://<ref>.supabase.co
 
-if (!password || !url) {
+if (!rawPassword || !supabaseUrl) {
   console.error("❌  Missing SUPABASE_DB_PASSWORD or SUPABASE_URL");
   process.exit(1);
 }
 
-// Derive project ref from URL
-const ref = url.replace("https://", "").replace(".supabase.co", "");
-// Use the direct (non-pooled) connection — required for DDL/migrations.
-const connectionString = `postgresql://postgres:${password}@db.${ref}.supabase.co:5432/postgres`;
+// URL-encode the password so special characters (!, @, #, etc.) don't break URI parsing.
+const encodedPassword = encodeURIComponent(rawPassword);
+
+// Derive project ref from the Supabase API URL.
+const ref = supabaseUrl.replace(/^https?:\/\//, "").replace(".supabase.co", "");
+
+// Direct (non-pooled) connection required for DDL/migrations.
+// sslmode=require keeps certificate verification enabled.
+const connectionString =
+  `postgresql://postgres:${encodedPassword}@db.${ref}.supabase.co:5432/postgres?sslmode=require`;
 
 const MIGRATIONS = [
   "supabase/migrations/20260707000001_initial_schema.sql",
@@ -31,25 +40,33 @@ const MIGRATIONS = [
   "supabase/migrations/20260707000003_integrity_triggers.sql",
 ];
 
+/**
+ * Apply a single migration file inside an explicit transaction.
+ * If any statement fails, the transaction is rolled back and the error rethrown.
+ */
 async function applyMigration(client, filePath) {
   const absPath = resolve(root, filePath);
   const sql = readFileSync(absPath, "utf-8");
   console.log(`\n📄  Applying ${filePath} …`);
+
+  await client.query("BEGIN");
   try {
     await client.query(sql);
+    await client.query("COMMIT");
     console.log(`  ✅  Done`);
   } catch (err) {
-    console.error(`  ❌  Error: ${err.message}`);
+    await client.query("ROLLBACK");
+    console.error(`  ❌  Error (rolled back): ${err.message}`);
     throw err;
   }
 }
 
 async function main() {
-  const client = new Client({ connectionString, ssl: { rejectUnauthorized: false } });
+  const client = new Client({ connectionString });
 
   try {
     await client.connect();
-    console.log("🔌  Connected to Supabase PostgreSQL\n");
+    console.log(`🔌  Connected to Supabase PostgreSQL (project: ${ref})\n`);
 
     for (const migration of MIGRATIONS) {
       await applyMigration(client, migration);
