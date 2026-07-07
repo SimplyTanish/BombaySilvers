@@ -1,0 +1,157 @@
+@import "tailwindcss" source(none);
+@source "../src";
+@import "tw-animate-css";
+
+@custom-variant dark (&:is(.dark *));
+
+/*
+ * Bombay Silvers — Bloomberg-terminal-for-bullion design system.
+ * Dark charcoal, gunmetal surfaces, metallic silver + platinum accents.
+ */
+
+@theme inline {
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --radius-2xl: calc(var(--radius) + 8px);
+  --radius-3xl: calc(var(--radius) + 12px);
+
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-ring-offset-background: var(--background);
+
+  --color-silver: var(--silver);
+  --color-silver-muted: var(--silver-muted);
+  --color-platinum: var(--platinum);
+  --color-gold: var(--gold);
+  --color-gain: var(--gain);
+  --color-loss: var(--loss);
+  --color-warn: var(--warn);
+  --color-surface-1: var(--surface-1);
+  --color-surface-2: var(--surface-2);
+  --color-surface-3: var(--surface-3);
+
+  --font-display: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+
+:root {
+  --radius: 1rem;
+
+  /* Charcoal / gunmetal base */
+  --background: oklch(0.16 0.008 260);
+  --foreground: oklch(0.97 0.003 250);
+
+  --surface-1: oklch(0.19 0.009 260);
+  --surface-2: oklch(0.225 0.01 260);
+  --surface-3: oklch(0.27 0.011 260);
+
+  --card: oklch(0.205 0.009 260 / 0.7);
+  --card-foreground: oklch(0.97 0.003 250);
+  --popover: oklch(0.21 0.009 260);
+  --popover-foreground: oklch(0.97 0.003 250);
+
+  --primary: oklch(0.86 0.008 250);
+  --primary-foreground: oklch(0.16 0.008 260);
+
+  --secondary: oklch(0.27 0.011 260);
+  --secondary-foreground: oklch(0.97 0.003 250);
+
+  --muted: oklch(0.24 0.01 260);
+  --muted-foreground: oklch(0.68 0.012 260);
+
+  --accent: oklch(0.3 0.012 260);
+  --accent-foreground: oklch(0.97 0.003 250);
+
+  --destructive: oklch(0.62 0.22 25);
+  --destructive-foreground: oklch(0.98 0.003 250);
+
+  --border: oklch(1 0 0 / 0.08);
+  --input: oklch(1 0 0 / 0.1);
+  --ring: oklch(0.75 0.015 250);
+
+  /* Brand accents */
+  --silver: oklch(0.86 0.008 250);         /* #C0C0C0-ish */
+  --silver-muted: oklch(0.7 0.008 250);
+  --platinum: oklch(0.93 0.006 260);       /* #E5E4E2 */
+  --gold: oklch(0.82 0.14 85);
+
+  /* Market status */
+  --gain: oklch(0.78 0.16 155);
+  --loss: oklch(0.68 0.22 22);
+  --warn: oklch(0.82 0.16 75);
+}
+
+@layer base {
+  * {
+    border-color: var(--color-border);
+  }
+
+  html, body {
+    background:
+      radial-gradient(1200px 600px at 10% -10%, oklch(0.24 0.02 260 / 0.6), transparent 60%),
+      radial-gradient(900px 500px at 100% 0%, oklch(0.22 0.03 280 / 0.5), transparent 60%),
+      var(--color-background);
+    color: var(--color-foreground);
+    font-family: var(--font-display);
+    -webkit-font-smoothing: antialiased;
+    letter-spacing: -0.01em;
+  }
+
+  .font-mono, .tabular {
+    font-family: var(--font-mono);
+    font-variant-numeric: tabular-nums;
+  }
+}
+
+@utility glass {
+  background: linear-gradient(180deg,
+    color-mix(in oklab, var(--surface-2) 85%, transparent),
+    color-mix(in oklab, var(--surface-1) 85%, transparent));
+  border: 1px solid color-mix(in oklab, var(--platinum) 12%, transparent);
+  backdrop-filter: blur(18px) saturate(140%);
+  box-shadow:
+    0 1px 0 0 color-mix(in oklab, var(--platinum) 8%, transparent) inset,
+    0 20px 60px -20px oklch(0 0 0 / 0.6);
+}
+
+@utility metallic-text {
+  background: linear-gradient(180deg, #f5f5f7 0%, #cfd0d3 45%, #8b8c90 60%, #e9e9ec 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+@utility grid-lines {
+  background-image:
+    linear-gradient(color-mix(in oklab, var(--platinum) 5%, transparent) 1px, transparent 1px),
+    linear-gradient(90deg, color-mix(in oklab, var(--platinum) 5%, transparent) 1px, transparent 1px);
+  background-size: 40px 40px;
+}
+
+@keyframes ticker {
+  from { transform: translateX(0); }
+  to { transform: translateX(-50%); }
+}
+@keyframes pulse-dot {
+  0%,100% { opacity: 1; transform: scale(1); }
+  50% { opacity: .35; transform: scale(.85); }
+}

@@ -1,0 +1,247 @@
+import { Link, useRouterState } from "@tanstack/react-router";
+import type { ReactNode } from "react";
+import {
+  LayoutDashboard,
+  Boxes,
+  ScrollText,
+  Receipt,
+  Users2,
+  Settings,
+  Bell,
+  Search,
+  Shield,
+  Gift,
+  LineChart,
+  Menu,
+} from "lucide-react";
+
+const nav = [
+  { to: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
+  { to: "/inventory", label: "Inventory", icon: Boxes },
+  { to: "/orders", label: "Orders", icon: ScrollText },
+  { to: "/ledger", label: "Ledger", icon: LineChart },
+  { to: "/invoices", label: "Invoices", icon: Receipt },
+  { to: "/referrals", label: "Referrals", icon: Gift },
+] as const;
+
+const adminNav = [
+  { to: "/admin", label: "Admin", icon: Users2 },
+  { to: "/security", label: "Security", icon: Shield },
+  { to: "/settings", label: "Settings", icon: Settings },
+] as const;
+
+export function BrandMark({ compact = false }: { compact?: boolean }) {
+  return (
+    <div className="flex items-center gap-2.5">
+      <div className="relative grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-gradient-to-br from-[#e9e9ec] via-[#b8b9bd] to-[#6d6e72] shadow-[inset_0_1px_0_rgba(255,255,255,0.6),0_6px_20px_-8px_rgba(0,0,0,0.8)]">
+        <span className="font-mono text-[13px] font-bold text-black/80">BS</span>
+      </div>
+      {!compact && (
+        <div className="min-w-0 leading-tight">
+          <div className="metallic-text text-[15px] font-semibold tracking-tight">Bombay Silvers</div>
+          <div className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground">Dealer Terminal · Est. 1984</div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+export function RateTicker() {
+  const items = [
+    { s: "GOLD 999", p: "72,148", d: "+312", up: true },
+    { s: "GOLD 995", p: "71,860", d: "+310", up: true },
+    { s: "SILVER 999", p: "89,420", d: "-145", up: false },
+    { s: "PLATINUM", p: "31,200", d: "+18", up: true },
+    { s: "MCX GOLD", p: "72,205", d: "+289", up: true },
+    { s: "USD/INR", p: "83.42", d: "-0.06", up: false },
+    { s: "LBMA AM", p: "$2,342", d: "+8.20", up: true },
+  ];
+  const row = (key: string) => (
+    <div key={key} className="flex shrink-0 items-center gap-8 pr-8 font-mono text-[12px]">
+      {items.map((i, idx) => (
+        <div key={idx} className="flex items-center gap-2">
+          <span className="text-muted-foreground">{i.s}</span>
+          <span className="text-foreground">₹{i.p}</span>
+          <span className={i.up ? "text-[oklch(var(--gain))]" : "text-[oklch(var(--loss))]"} style={{ color: i.up ? "var(--gain)" : "var(--loss)" }}>
+            {i.d}
+          </span>
+        </div>
+      ))}
+    </div>
+  );
+  return (
+    <div className="relative flex overflow-hidden border-y border-border/60 bg-[var(--surface-1)]/60 py-2">
+      <div className="flex animate-[ticker_45s_linear_infinite] whitespace-nowrap">
+        {row("a")}
+        {row("b")}
+      </div>
+      <div className="pointer-events-none absolute inset-y-0 left-0 w-16 bg-gradient-to-r from-background to-transparent" />
+      <div className="pointer-events-none absolute inset-y-0 right-0 w-16 bg-gradient-to-l from-background to-transparent" />
+    </div>
+  );
+}
+
+export function LiveDot({ label = "LIVE" }: { label?: string }) {
+  return (
+    <span className="inline-flex items-center gap-1.5 rounded-full border border-border/70 bg-[var(--surface-2)] px-2 py-0.5 font-mono text-[10px] uppercase tracking-[0.15em] text-muted-foreground">
+      <span className="h-1.5 w-1.5 rounded-full bg-[var(--gain)] shadow-[0_0_8px_var(--gain)] [animation:pulse-dot_1.6s_ease-in-out_infinite]" />
+      {label}
+    </span>
+  );
+}
+
+function Sidebar() {
+  const pathname = useRouterState({ select: (s) => s.location.pathname });
+  return (
+    <aside className="hidden w-[248px] shrink-0 flex-col gap-2 border-r border-border/60 bg-[var(--surface-1)]/60 p-4 lg:flex">
+      <div className="px-1 pb-4">
+        <BrandMark />
+      </div>
+      <div className="px-1 pb-2 text-[10px] uppercase tracking-[0.2em] text-muted-foreground">Trading</div>
+      <nav className="flex flex-col gap-0.5">
+        {nav.map(({ to, label, icon: Icon }) => {
+          const active = pathname === to || pathname.startsWith(to + "/");
+          return (
+            <Link
+              key={to}
+              to={to}
+              className={
+                "flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors " +
+                (active
+                  ? "bg-[var(--surface-3)] text-foreground shadow-[inset_0_1px_0_rgba(255,255,255,0.06)]"
+                  : "text-muted-foreground hover:bg-[var(--surface-2)] hover:text-foreground")
+              }
+            >
+              <Icon className="h-4 w-4" />
+              <span>{label}</span>
+            </Link>
+          );
+        })}
+      </nav>
+      <div className="mt-4 px-1 pb-2 text-[10px] uppercase tracking-[0.2em] text-muted-foreground">Operations</div>
+      <nav className="flex flex-col gap-0.5">
+        {adminNav.map(({ to, label, icon: Icon }) => {
+          const active = pathname === to;
+          return (
+            <Link
+              key={to}
+              to={to}
+              className={
+                "flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors " +
+                (active
+                  ? "bg-[var(--surface-3)] text-foreground"
+                  : "text-muted-foreground hover:bg-[var(--surface-2)] hover:text-foreground")
+              }
+            >
+              <Icon className="h-4 w-4" />
+              <span>{label}</span>
+            </Link>
+          );
+        })}
+      </nav>
+      <div className="mt-auto rounded-xl border border-border/60 bg-[var(--surface-2)]/60 p-3">
+        <div className="flex items-center gap-2.5">
+          <div className="grid h-9 w-9 place-items-center rounded-full bg-gradient-to-br from-[#d9d9dd] to-[#7a7b7f] font-mono text-[11px] font-bold text-black">RM</div>
+          <div className="min-w-0 flex-1">
+            <div className="truncate text-sm font-medium">Rahul Mehta</div>
+            <div className="truncate text-[11px] text-muted-foreground">Mehta Bullion · Surat</div>
+          </div>
+        </div>
+      </div>
+    </aside>
+  );
+}
+
+function Topbar() {
+  return (
+    <div className="sticky top-0 z-20 border-b border-border/60 bg-background/70 backdrop-blur-xl">
+      <div className="flex items-center gap-3 px-4 py-3 lg:px-6">
+        <button className="grid h-9 w-9 place-items-center rounded-lg border border-border/60 bg-[var(--surface-2)] lg:hidden">
+          <Menu className="h-4 w-4" />
+        </button>
+        <div className="lg:hidden">
+          <BrandMark compact />
+        </div>
+        <div className="relative ml-auto hidden max-w-md flex-1 md:block">
+          <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          <input
+            placeholder="Search orders, dealers, invoices…"
+            className="h-9 w-full rounded-lg border border-border/60 bg-[var(--surface-2)] pl-9 pr-3 text-sm outline-none placeholder:text-muted-foreground focus:border-[var(--silver-muted)]"
+          />
+        </div>
+        <LiveDot label="Market Open" />
+        <button className="relative grid h-9 w-9 place-items-center rounded-lg border border-border/60 bg-[var(--surface-2)]">
+          <Bell className="h-4 w-4" />
+          <span className="absolute right-1.5 top-1.5 h-1.5 w-1.5 rounded-full bg-[var(--warn)]" />
+        </button>
+      </div>
+      <RateTicker />
+    </div>
+  );
+}
+
+function BottomNav() {
+  const pathname = useRouterState({ select: (s) => s.location.pathname });
+  const items = nav.slice(0, 5);
+  return (
+    <nav className="fixed inset-x-0 bottom-0 z-30 border-t border-border/60 bg-background/85 backdrop-blur-xl lg:hidden">
+      <div className="mx-auto flex max-w-md items-stretch justify-between px-2 py-2">
+        {items.map(({ to, label, icon: Icon }) => {
+          const active = pathname === to || pathname.startsWith(to + "/");
+          return (
+            <Link key={to} to={to} className="flex flex-1 flex-col items-center gap-1 py-1">
+              <Icon className={"h-5 w-5 " + (active ? "text-foreground" : "text-muted-foreground")} />
+              <span className={"text-[10px] " + (active ? "text-foreground" : "text-muted-foreground")}>{label}</span>
+              {active && <span className="h-0.5 w-6 rounded-full bg-gradient-to-r from-transparent via-[var(--platinum)] to-transparent" />}
+            </Link>
+          );
+        })}
+      </div>
+    </nav>
+  );
+}
+
+export function AppShell({ children }: { children: ReactNode }) {
+  return (
+    <div className="min-h-screen">
+      <div className="flex">
+        <Sidebar />
+        <div className="min-w-0 flex-1">
+          <Topbar />
+          <main className="px-4 pb-28 pt-6 lg:px-8 lg:pb-10">{children}</main>
+        </div>
+      </div>
+      <BottomNav />
+    </div>
+  );
+}
+
+export function PageTitle({
+  title,
+  subtitle,
+  actions,
+}: {
+  title: string;
+  subtitle?: string;
+  actions?: ReactNode;
+}) {
+  return (
+    <div className="mb-6 grid grid-cols-[minmax(0,1fr)_auto] items-center gap-4">
+      <div className="min-w-0">
+        <h1 className="truncate text-2xl font-semibold tracking-tight">{title}</h1>
+        {subtitle && <p className="mt-1 truncate text-sm text-muted-foreground">{subtitle}</p>}
+      </div>
+      {actions && <div className="flex shrink-0 items-center gap-2">{actions}</div>}
+    </div>
+  );
+}
+
+export function GlassCard({
+  children,
+  className = "",
+}: {
+  children: ReactNode;
+  className?: string;
+}) {
+  return <div className={"glass rounded-2xl " + className}>{children}</div>;
+}
