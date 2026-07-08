@@ -1,0 +1,55 @@
+
+> vite dev
+
+The plugin "vite-tsconfig-paths" is detected. Vite now supports tsconfig paths resolution natively via the resolve.tsconfigPaths option. You can remove the plugin and set resolve.tsconfigPaths: true in your Vite config instead.
+
+  VITE v8.1.3  ready in 2472 ms
+
+  ➜  Local:   http://localhost:5173/
+  ➜  Network: http://172.24.0.2:5173/
+  ➜  press h + enter to show help
+2:58:17 PM [vite] (ssr) connected.
+2:58:21 PM [vite] (client) [console.error] A tree hydrated but some attributes of the server rendered HTML didn't match the client properties. This won't be patched up. This can happen if a SSR-ed Client Component used:
+
+- A server/client branch `if (typeof window !== 'undefined')`.
+- Variable input such as `Date.now()` or `Math.random()` which changes each time it's called.
+- Date formatting in a user's locale which doesn't match the server.
+- External changing data without sending a snapshot of it along with the HTML.
+- Invalid HTML tag nesting.
+
+It can also happen if the client has a browser extension installed which messes with the HTML before React loaded.
+
+https://react.dev/link/hydration-mismatch
+
+  ...
+    <StartClient ref={function ref}>
+      <Await promise={Promise}>
+        <AwaitInner promise={Promise}>
+          <RouterProvider router={{...}}>
+            <RouterContextProvider router={{...}}>
+              <Matches>
+                <SafeFragment fallback={null}>
+                  <Transitioner>
+                  <MatchesInner>
+                    <CatchBoundary getResetKey={function getResetKey} errorComponent={function ErrorComponent} ...>
+                      <CatchBoundaryImpl getResetKey={function getResetKey} onCatch={function}>
+                        <MatchImpl matchId="__root__/">
+                          <MatchView router={{...}} matchId="__root__/" resetKey={0} matchState={{routeId:"_...", ...}}>
+                            <RootShell>
+                              <html
+                                lang="en"
++                               data-tsd-source="/src/routes/__root.tsx:110:10"
+-                               data-tsd-source="/src/routes/__root.tsx:105:5"
+                                ref={function ref}
+                              >
+                                <head
++                                 data-tsd-source="/src/routes/__root.tsx:111:7"
+-                                 data-tsd-source="/src/routes/__root.tsx:106:7"
+                                  ref={function ref}
+                                >
+                                <body
++                                 data-tsd-source="/src/routes/__root.tsx:114:7"
+-                                 data-tsd-source="/src/routes/__root.tsx:109:7"
+                                  ref={function ref}
+                                >
+
