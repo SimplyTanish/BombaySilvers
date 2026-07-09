@@ -1,0 +1,1 @@
+- [Replit webview 502 with dual port mappings](replit-port-mapping-502.md) — duplicate `.replit` port entries mapping to the same externalPort cause public proxy 502s even when the server is healthy.
