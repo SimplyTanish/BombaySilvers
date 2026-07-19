@@ -1,6 +1,8 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { useState } from "react";
 import { BrandMark } from "@/components/AppShell";
-import { ArrowRight, ShieldCheck } from "lucide-react";
+import { ArrowRight, ShieldCheck, Loader2 } from "lucide-react";
+import { supabase } from "@/lib/supabase";
 
 export const Route = createFileRoute("/login")({
   head: () => ({ meta: [{ title: "Sign in · Bombay Silvers" }] }),
@@ -8,6 +10,33 @@ export const Route = createFileRoute("/login")({
 });
 
 function Login() {
+  const navigate = useNavigate();
+  const [phone, setPhone] = useState("9820412876");
+  const [trustDevice, setTrustDevice] = useState(true);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const cleaned = phone.replace(/\s+/g, "").replace(/^0+/, "");
+    if (cleaned.length < 10) {
+      setError("Please enter a valid 10-digit mobile number.");
+      return;
+    }
+    const fullPhone = `+91${cleaned}`;
+    setLoading(true);
+    setError(null);
+    const { error: otpError } = await supabase.auth.signInWithOtp({
+      phone: fullPhone,
+    });
+    setLoading(false);
+    if (otpError) {
+      setError(otpError.message);
+      return;
+    }
+    navigate({ to: "/otp", search: { phone: fullPhone, trust: trustDevice } });
+  };
+
   return (
     <div className="grid min-h-screen lg:grid-cols-[1.05fr_1fr]">
       {/* Left brand pane (desktop only) */}
@@ -46,57 +75,87 @@ function Login() {
           <div className="mb-8 lg:hidden">
             <BrandMark />
           </div>
-          <div className="glass rounded-3xl p-6 sm:p-8">
-            <div className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground">Dealer sign in</div>
-            <h1 className="mt-2 text-2xl font-semibold tracking-tight sm:text-3xl">Welcome back.</h1>
-            <p className="mt-1 text-sm text-muted-foreground">
-              Enter your registered mobile number to continue.
-            </p>
+          <form onSubmit={handleSubmit}>
+            <div className="glass rounded-3xl p-6 sm:p-8">
+              <div className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground">Dealer sign in</div>
+              <h1 className="mt-2 text-2xl font-semibold tracking-tight sm:text-3xl">Welcome back.</h1>
+              <p className="mt-1 text-sm text-muted-foreground">
+                Enter your registered mobile number to continue.
+              </p>
 
-            <div className="mt-8 space-y-4">
-              <label className="block text-xs font-medium uppercase tracking-wider text-muted-foreground">
-                Mobile number
-              </label>
-              <div className="flex items-stretch gap-2">
-                <div className="flex items-center gap-2 rounded-xl border border-border/70 bg-[var(--surface-2)] px-3 font-mono text-sm">
-                  🇮🇳 +91
+              <div className="mt-8 space-y-4">
+                <label className="block text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                  Mobile number
+                </label>
+                <div className="flex items-stretch gap-2">
+                  <div className="flex items-center gap-2 rounded-xl border border-border/70 bg-[var(--surface-2)] px-3 font-mono text-sm">
+                    🇮🇳 +91
+                  </div>
+                  <input
+                    type="tel"
+                    value={phone}
+                    onChange={(e) => {
+                      setPhone(e.target.value);
+                      setError(null);
+                    }}
+                    placeholder="98765 43210"
+                    maxLength={11}
+                    className="h-12 flex-1 rounded-xl border border-border/70 bg-[var(--surface-2)] px-4 font-mono text-lg tracking-wider outline-none focus:border-[var(--silver-muted)]"
+                  />
                 </div>
-                <input
-                  defaultValue="98204 12876"
-                  className="h-12 flex-1 rounded-xl border border-border/70 bg-[var(--surface-2)] px-4 font-mono text-lg tracking-wider outline-none focus:border-[var(--silver-muted)]"
-                />
+
+                {error && (
+                  <p className="rounded-lg border border-[var(--loss)]/30 bg-[var(--loss)]/10 px-3 py-2 text-xs text-[var(--loss)]">
+                    {error}
+                  </p>
+                )}
+
+                <label className="mt-2 flex items-center gap-2 text-xs text-muted-foreground">
+                  <input
+                    type="checkbox"
+                    checked={trustDevice}
+                    onChange={(e) => setTrustDevice(e.target.checked)}
+                    className="h-3.5 w-3.5 accent-[var(--silver)]"
+                  />
+                  Trust this device for 30 days
+                </label>
+
+                <button
+                  type="submit"
+                  disabled={loading}
+                  className="group mt-4 flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-b from-[#f1f1f4] to-[#b6b7bb] font-medium text-black shadow-[inset_0_1px_0_rgba(255,255,255,0.7)] transition-transform hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  {loading ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <>
+                      Send secure OTP
+                      <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
+                    </>
+                  )}
+                </button>
+
+                <div className="relative py-2 text-center text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
+                  <span className="relative z-10 bg-[var(--surface-1)] px-3">or</span>
+                  <div className="absolute inset-x-0 top-1/2 h-px bg-border/60" />
+                </div>
+
+                <button
+                  type="button"
+                  className="h-11 w-full rounded-xl border border-border/70 bg-[var(--surface-2)] text-sm text-foreground hover:bg-[var(--surface-3)]"
+                >
+                  Sign in with dealer ID
+                </button>
               </div>
 
-              <label className="mt-2 flex items-center gap-2 text-xs text-muted-foreground">
-                <input type="checkbox" defaultChecked className="h-3.5 w-3.5 accent-[var(--silver)]" />
-                Trust this device for 30 days
-              </label>
-
-              <Link
-                to="/otp"
-                className="group mt-4 flex h-12 items-center justify-center gap-2 rounded-xl bg-gradient-to-b from-[#f1f1f4] to-[#b6b7bb] font-medium text-black shadow-[inset_0_1px_0_rgba(255,255,255,0.7)] transition-transform hover:-translate-y-0.5"
-              >
-                Send secure OTP
-                <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
-              </Link>
-
-              <div className="relative py-2 text-center text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
-                <span className="relative z-10 bg-[var(--surface-1)] px-3">or</span>
-                <div className="absolute inset-x-0 top-1/2 h-px bg-border/60" />
+              <div className="mt-8 text-center text-xs text-muted-foreground">
+                New to Bombay Silvers?{" "}
+                <Link to="/onboarding" className="text-foreground underline underline-offset-4">
+                  Apply as a dealer
+                </Link>
               </div>
-
-              <button className="h-11 w-full rounded-xl border border-border/70 bg-[var(--surface-2)] text-sm text-foreground hover:bg-[var(--surface-3)]">
-                Sign in with dealer ID
-              </button>
             </div>
-
-            <div className="mt-8 text-center text-xs text-muted-foreground">
-              New to Bombay Silvers?{" "}
-              <Link to="/onboarding" className="text-foreground underline underline-offset-4">
-                Apply as a dealer
-              </Link>
-            </div>
-          </div>
+          </form>
 
           <p className="mt-6 text-center text-[11px] text-muted-foreground">
             Protected by CSRF, rate limiting and device fingerprinting.

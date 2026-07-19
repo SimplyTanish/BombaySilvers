@@ -102,11 +102,14 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
 
 function RootShell({ children }: { children: ReactNode }) {
   return (
-    <html lang="en">
-      <head>
+    // suppressHydrationWarning on html/head/body silences the `data-tsd-source`
+    // attribute mismatch injected by the Lovable component-tagger plugin in dev.
+    // The attribute is dev-only and has no effect on functionality.
+    <html lang="en" suppressHydrationWarning>
+      <head suppressHydrationWarning>
         <HeadContent />
       </head>
-      <body>
+      <body suppressHydrationWarning>
         {children}
         <Scripts />
       </body>

@@ -6,7 +6,7 @@
  * 1. `supabase`  — browser-safe anon client. Use in React components and
  *    TanStack Query hooks. Subject to Row Level Security.
  *
- * 2. `supabaseAdmin` — service-role client. Use ONLY in server functions
+ * 2. `createAdminClient` — service-role client. Use ONLY in server functions
  *    (TanStack Start loaders/actions, API routes). NEVER import this in
  *    client-side component code. Bypasses RLS — treat like a DB root key.
  */
@@ -30,8 +30,25 @@ const supabaseAnonKey =
 if (!supabaseUrl || !supabaseAnonKey) {
   throw new Error(
     "Missing Supabase environment variables. " +
-      "Ensure SUPABASE_URL and SUPABASE_ANON_KEY are set in Replit Secrets."
+      "Ensure VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY are set in Replit Secrets."
   );
+}
+
+// ---------------------------------------------------------------------------
+// Node.js < 22 WebSocket fix (SSR only)
+//
+// @supabase/realtime-js requires a WebSocket constructor. Node.js 20 does not
+// ship one natively. The `ws` package (already in package.json) provides it.
+//
+// `import.meta.env.SSR` is a build-time constant in Vite:
+//   - SSR build  → true  → this branch is included; `ws` is loaded
+//   - Browser build → false → entire block is dead-code-eliminated by Vite;
+//     `ws` is never bundled into the client.
+// ---------------------------------------------------------------------------
+let wsTransport: typeof WebSocket | undefined;
+if (import.meta.env.SSR) {
+  const { default: ws } = await import("ws");
+  wsTransport = ws as unknown as typeof WebSocket;
 }
 
 // ---------------------------------------------------------------------------
@@ -43,6 +60,7 @@ export const supabase = createClient<Database>(supabaseUrl, supabaseAnonKey, {
     autoRefreshToken: true,
     detectSessionInUrl: true,
   },
+  ...(wsTransport && { realtime: { transport: wsTransport } }),
 });
 
 // ---------------------------------------------------------------------------
@@ -57,11 +75,12 @@ export function createAdminClient() {
         "This client must only be used in server-side code."
     );
   }
-  return createClient<Database>(supabaseUrl, serviceRoleKey, {
+  return createClient<Database>(supabaseUrl!, serviceRoleKey, {
     auth: {
       autoRefreshToken: false,
       persistSession: false,
     },
+    ...(wsTransport && { realtime: { transport: wsTransport } }),
   });
 }
 

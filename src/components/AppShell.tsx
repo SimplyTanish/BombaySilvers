@@ -1,5 +1,5 @@
-import { Link, useRouterState } from "@tanstack/react-router";
-import type { ReactNode } from "react";
+import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
+import { useEffect, useState, type ReactNode } from "react";
 import {
   LayoutDashboard,
   Boxes,
@@ -13,7 +13,13 @@ import {
   Gift,
   LineChart,
   Menu,
+  LogOut,
 } from "lucide-react";
+import { useAuth } from "@/hooks/use-auth";
+import {
+  Sheet,
+  SheetContent,
+} from "@/components/ui/sheet";
 
 const nav = [
   { to: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
@@ -62,7 +68,7 @@ export function RateTicker() {
         <div key={idx} className="flex items-center gap-2">
           <span className="text-muted-foreground">{i.s}</span>
           <span className="text-foreground">₹{i.p}</span>
-          <span className={i.up ? "text-[oklch(var(--gain))]" : "text-[oklch(var(--loss))]"} style={{ color: i.up ? "var(--gain)" : "var(--loss)" }}>
+          <span style={{ color: i.up ? "var(--gain)" : "var(--loss)" }}>
             {i.d}
           </span>
         </div>
@@ -90,10 +96,24 @@ export function LiveDot({ label = "LIVE" }: { label?: string }) {
   );
 }
 
-function Sidebar() {
-  const pathname = useRouterState({ select: (s) => s.location.pathname });
+// Shared sidebar nav — rendered in both desktop sidebar and mobile Sheet.
+function SidebarNav({
+  pathname,
+  user,
+  onSignOut,
+  onNav,
+}: {
+  pathname: string;
+  user: { phone?: string | null; email?: string | null } | null;
+  onSignOut: () => void;
+  onNav?: () => void;
+}) {
+  const displayName = user?.phone
+    ? user.phone.replace("+91", "+91 ").replace(/(\+91 )(\d{5})(\d{5})/, "$1$2 $3")
+    : user?.email ?? "Dealer";
+
   return (
-    <aside className="hidden w-[248px] shrink-0 flex-col gap-2 border-r border-border/60 bg-[var(--surface-1)]/60 p-4 lg:flex">
+    <div className="flex h-full flex-col gap-2 p-4">
       <div className="px-1 pb-4">
         <BrandMark />
       </div>
@@ -105,6 +125,7 @@ function Sidebar() {
             <Link
               key={to}
               to={to}
+              onClick={onNav}
               className={
                 "flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors " +
                 (active
@@ -126,6 +147,7 @@ function Sidebar() {
             <Link
               key={to}
               to={to}
+              onClick={onNav}
               className={
                 "flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors " +
                 (active
@@ -139,24 +161,39 @@ function Sidebar() {
           );
         })}
       </nav>
-      <div className="mt-auto rounded-xl border border-border/60 bg-[var(--surface-2)]/60 p-3">
-        <div className="flex items-center gap-2.5">
-          <div className="grid h-9 w-9 place-items-center rounded-full bg-gradient-to-br from-[#d9d9dd] to-[#7a7b7f] font-mono text-[11px] font-bold text-black">RM</div>
-          <div className="min-w-0 flex-1">
-            <div className="truncate text-sm font-medium">Rahul Mehta</div>
-            <div className="truncate text-[11px] text-muted-foreground">Mehta Bullion · Surat</div>
+      <div className="mt-auto space-y-2">
+        <div className="rounded-xl border border-border/60 bg-[var(--surface-2)]/60 p-3">
+          <div className="flex items-center gap-2.5">
+            <div className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-gradient-to-br from-[#d9d9dd] to-[#7a7b7f] font-mono text-[11px] font-bold text-black">
+              {displayName.slice(-2).toUpperCase()}
+            </div>
+            <div className="min-w-0 flex-1">
+              <div className="truncate text-sm font-medium">{displayName}</div>
+              <div className="truncate text-[11px] text-muted-foreground">Dealer account</div>
+            </div>
           </div>
         </div>
+        <button
+          onClick={onSignOut}
+          className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm text-muted-foreground transition-colors hover:bg-[var(--surface-2)] hover:text-foreground"
+        >
+          <LogOut className="h-4 w-4" />
+          Sign out
+        </button>
       </div>
-    </aside>
+    </div>
   );
 }
 
-function Topbar() {
+function Topbar({ onMenuClick }: { onMenuClick: () => void }) {
   return (
     <div className="sticky top-0 z-20 border-b border-border/60 bg-background/70 backdrop-blur-xl">
       <div className="flex items-center gap-3 px-4 py-3 lg:px-6">
-        <button className="grid h-9 w-9 place-items-center rounded-lg border border-border/60 bg-[var(--surface-2)] lg:hidden">
+        <button
+          onClick={onMenuClick}
+          className="grid h-9 w-9 place-items-center rounded-lg border border-border/60 bg-[var(--surface-2)] lg:hidden"
+          aria-label="Open menu"
+        >
           <Menu className="h-4 w-4" />
         </button>
         <div className="lg:hidden">
@@ -202,12 +239,57 @@ function BottomNav() {
 }
 
 export function AppShell({ children }: { children: ReactNode }) {
+  const { session, user, loading, signOut } = useAuth();
+  const navigate = useNavigate();
+  const pathname = useRouterState({ select: (s) => s.location.pathname });
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+
+  // Auth guard — redirect to login if no session once loading resolves.
+  useEffect(() => {
+    if (!loading && !session) {
+      navigate({ to: "/login" });
+    }
+  }, [loading, session, navigate]);
+
+  const handleSignOut = async () => {
+    await signOut();
+    navigate({ to: "/login" });
+  };
+
+  // Render a minimal blank screen while checking auth to avoid flash.
+  if (loading || !session) {
+    return <div className="min-h-screen bg-background" />;
+  }
+
   return (
     <div className="min-h-screen">
       <div className="flex">
-        <Sidebar />
+        {/* Desktop sidebar */}
+        <aside className="hidden w-[248px] shrink-0 flex-col border-r border-border/60 bg-[var(--surface-1)]/60 lg:flex">
+          <SidebarNav
+            pathname={pathname}
+            user={user}
+            onSignOut={handleSignOut}
+          />
+        </aside>
+
+        {/* Mobile sidebar — Sheet */}
+        <Sheet open={sidebarOpen} onOpenChange={setSidebarOpen}>
+          <SheetContent
+            side="left"
+            className="w-[248px] p-0 border-r border-border/60 bg-[var(--surface-1)]"
+          >
+            <SidebarNav
+              pathname={pathname}
+              user={user}
+              onSignOut={handleSignOut}
+              onNav={() => setSidebarOpen(false)}
+            />
+          </SheetContent>
+        </Sheet>
+
         <div className="min-w-0 flex-1">
-          <Topbar />
+          <Topbar onMenuClick={() => setSidebarOpen(true)} />
           <main className="px-4 pb-28 pt-6 lg:px-8 lg:pb-10">{children}</main>
         </div>
       </div>
