@@ -2,7 +2,7 @@
 # https://supabase.com/docs/reference/cli/config
 
 [project]
-project_id = "bombay-silvers"   # replace with your Supabase project ref
+project_id = "ifipekomyainduotbjqd"
 
 [api]
 enabled = true

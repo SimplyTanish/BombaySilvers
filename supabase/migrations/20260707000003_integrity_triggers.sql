@@ -83,9 +83,17 @@ CREATE TRIGGER trg_audit_logs_immutable
 -- that sets a session flag (app.bypass_dealer_field_lock = 'true').
 -- ---------------------------------------------------------------------------
 CREATE OR REPLACE FUNCTION public.protect_dealer_privileged_fields()
-RETURNS TRIGGER AS $$
+RETURNS TRIGGER AS $
 BEGIN
-  -- Service role can set this flag to bypass the lock for legitimate updates.
+  -- Service role (and the Postgres superuser used by the Supabase SQL editor/migrations)
+  -- bypasses the lock. Checking current_user is not spoofable by an application
+  -- connection the way a session GUC (app.bypass_dealer_field_lock) would be (H5/ESC-1).
+  IF current_user IN ('postgres', 'service_role') THEN
+    RETURN NEW;
+  END IF;
+
+  -- Legacy escape hatch retained for any existing server-side code that already
+  -- sets this flag explicitly within a service-role session.
   IF current_setting('app.bypass_dealer_field_lock', TRUE) = 'true' THEN
     RETURN NEW;
   END IF;
@@ -166,25 +174,53 @@ CREATE TRIGGER trg_order_status_machine
 
 -- ---------------------------------------------------------------------------
 -- 5. INVENTORY QUANTITY SANITY
--- reserved must not exceed available + reserved (i.e., no negative available).
+-- Two invariants:
+--   a) available/reserved must never be negative (belt-and-suspenders with the
+--      column CHECK constraints — kept here so the error message identifies
+--      the affected product/warehouse).
+--   b) on UPDATE, a plain reserve/release transition (moving stock between
+--      "available" and "reserved") must conserve the total
+--      (available + reserved). It must NOT silently create or destroy stock.
+--      Legitimate stock adjustments (restocks, write-offs, stock takes) go
+--      through service-role code that sets
+--      app.bypass_inventory_total_lock = 'true' for that statement.
+--      NOTE: the original version of this check compared
+--      quantity_reserved > quantity_available + quantity_reserved, which
+--      algebraically reduces to quantity_available < 0 — already covered by
+--      the CHECK constraint, making it a no-op. This replaces it with a real
+--      cross-column invariant.
 -- ---------------------------------------------------------------------------
 CREATE OR REPLACE FUNCTION public.check_inventory_quantities()
-RETURNS TRIGGER AS $$
+RETURNS TRIGGER AS $
+DECLARE
+  old_total NUMERIC;
+  new_total NUMERIC;
 BEGIN
-  IF NEW.quantity_reserved > (NEW.quantity_available + NEW.quantity_reserved) THEN
-    RAISE EXCEPTION
-      'inventory.quantity_reserved (%) cannot exceed total stock for product % at warehouse %.',
-      NEW.quantity_reserved, NEW.product_id, NEW.warehouse_id;
-  END IF;
-  -- Available must never go below zero (covered by CHECK but also enforced here for clarity).
   IF NEW.quantity_available < 0 THEN
     RAISE EXCEPTION
       'inventory.quantity_available cannot be negative for product % at warehouse %.',
       NEW.product_id, NEW.warehouse_id;
   END IF;
+
+  IF NEW.quantity_reserved < 0 THEN
+    RAISE EXCEPTION
+      'inventory.quantity_reserved cannot be negative for product % at warehouse %.',
+      NEW.product_id, NEW.warehouse_id;
+  END IF;
+
+  IF TG_OP = 'UPDATE' AND current_setting('app.bypass_inventory_total_lock', TRUE) IS DISTINCT FROM 'true' THEN
+    old_total := OLD.quantity_available + OLD.quantity_reserved;
+    new_total := NEW.quantity_available + NEW.quantity_reserved;
+    IF new_total <> old_total THEN
+      RAISE EXCEPTION
+        'inventory total (available + reserved) for product % at warehouse % changed from % to % outside of a stock-adjustment bypass. Reserve/release transitions must move stock between available and reserved, not create or destroy it.',
+        NEW.product_id, NEW.warehouse_id, old_total, new_total;
+    END IF;
+  END IF;
+
   RETURN NEW;
 END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
+$ LANGUAGE plpgsql SECURITY DEFINER;
 
 CREATE TRIGGER trg_inventory_quantity_sanity
   BEFORE INSERT OR UPDATE ON public.inventory

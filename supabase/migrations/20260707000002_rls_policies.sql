@@ -45,9 +45,23 @@ RETURNS BOOLEAN AS $$
 $$ LANGUAGE sql STABLE SECURITY DEFINER SET search_path = public;
 
 CREATE OR REPLACE FUNCTION public.is_dealer()
-RETURNS BOOLEAN AS $$
+RETURNS BOOLEAN AS $
   SELECT get_my_role() = 'dealer';
-$$ LANGUAGE sql STABLE SECURITY DEFINER SET search_path = public;
+$ LANGUAGE sql STABLE SECURITY DEFINER SET search_path = public;
+
+-- Reads a target user's role without re-triggering RLS on public.users.
+-- Used by policies ON public.users to avoid self-recursion (see admin_manage_non_admin_users).
+CREATE OR REPLACE FUNCTION public.get_user_role(target_id UUID)
+RETURNS public.user_role AS $
+  SELECT role FROM public.users WHERE id = target_id;
+$ LANGUAGE sql STABLE SECURITY DEFINER SET search_path = public;
+
+-- Snapshot of the caller's own dealer row without re-triggering RLS on public.dealers.
+-- Used by dealer_update_own_dealer to avoid 6x self-recursive sub-selects.
+CREATE OR REPLACE FUNCTION public.get_my_dealer_snapshot()
+RETURNS public.dealers AS $
+  SELECT * FROM public.dealers WHERE user_id = auth.uid() AND deleted_at IS NULL LIMIT 1;
+$ LANGUAGE sql STABLE SECURITY DEFINER SET search_path = public;
 
 
 -- =============================================================================
@@ -121,11 +135,13 @@ CREATE POLICY "super_admin_manage_users"
   USING (is_super_admin());
 
 -- Admin can update staff and dealer accounts, but not other admins or super_admins.
+-- Uses get_user_role() (SECURITY DEFINER) instead of a sub-SELECT on public.users,
+-- which would re-trigger RLS on this same table and recurse indefinitely under FORCE RLS.
 CREATE POLICY "admin_manage_non_admin_users"
   ON public.users FOR UPDATE
   USING (
     is_admin_or_above()
-    AND (SELECT role FROM public.users WHERE id = users.id) IN ('staff', 'dealer')
+    AND get_user_role(users.id) IN ('staff', 'dealer')
   )
   WITH CHECK (
     role IN ('staff', 'dealer')   -- admins cannot promote to admin or above
@@ -158,10 +174,10 @@ CREATE POLICY "dealer_read_own_firm"
     id IN (SELECT firm_id FROM public.dealers WHERE user_id = auth.uid() AND deleted_at IS NULL)
   );
 
--- Dealer can create and update their own firm.
-CREATE POLICY "dealer_insert_own_firm"
-  ON public.firms FOR INSERT
-  WITH CHECK (TRUE);  -- Scoped server-side: insert via service role after dealer creation.
+-- Firm creation happens via the service role during onboarding (which bypasses RLS),
+-- so no authenticated-role INSERT policy is needed. Previously this was WITH CHECK (TRUE),
+-- which let any authenticated dealer insert arbitrary orphaned firm rows (IDOR-1 / ESC-3).
+-- Intentionally no dealer_insert_own_firm policy here.
 
 CREATE POLICY "dealer_update_own_firm"
   ON public.firms FOR UPDATE
@@ -191,22 +207,23 @@ CREATE POLICY "dealer_read_own_dealer"
 
 -- Dealer can update ONLY their own row, and only safe fields.
 -- Privileged fields (status, tier, credit_limit, current_balance, firm_id, referred_by)
--- must not change. We enforce this by requiring them to match the committed DB value.
--- A SECURITY DEFINER function is used to read the old row without RLS recursion.
+-- must not change. We enforce this by requiring them to match the committed DB value,
+-- read once via get_my_dealer_snapshot() (SECURITY DEFINER) instead of six repeated
+-- sub-selects on public.dealers, each of which would re-trigger RLS on this same table.
 CREATE POLICY "dealer_update_own_dealer"
   ON public.dealers FOR UPDATE
   USING (user_id = auth.uid() AND deleted_at IS NULL)
   WITH CHECK (
     user_id = auth.uid()
     -- These four fields are server-managed; dealers cannot change them.
-    AND status        = (SELECT status        FROM public.dealers WHERE id = dealers.id AND user_id = auth.uid())
-    AND tier          = (SELECT tier          FROM public.dealers WHERE id = dealers.id AND user_id = auth.uid())
-    AND credit_limit  = (SELECT credit_limit  FROM public.dealers WHERE id = dealers.id AND user_id = auth.uid())
-    AND current_balance = (SELECT current_balance FROM public.dealers WHERE id = dealers.id AND user_id = auth.uid())
+    AND status        = (SELECT status        FROM public.get_my_dealer_snapshot())
+    AND tier          = (SELECT tier          FROM public.get_my_dealer_snapshot())
+    AND credit_limit  = (SELECT credit_limit  FROM public.get_my_dealer_snapshot())
+    AND current_balance = (SELECT current_balance FROM public.get_my_dealer_snapshot())
     -- firm_id lock prevents IDOR: dealer cannot point their dealer row at another firm.
-    AND firm_id       IS NOT DISTINCT FROM (SELECT firm_id FROM public.dealers WHERE id = dealers.id AND user_id = auth.uid())
+    AND firm_id       IS NOT DISTINCT FROM (SELECT firm_id FROM public.get_my_dealer_snapshot())
     -- referred_by is immutable after set.
-    AND referred_by   IS NOT DISTINCT FROM (SELECT referred_by FROM public.dealers WHERE id = dealers.id AND user_id = auth.uid())
+    AND referred_by   IS NOT DISTINCT FROM (SELECT referred_by FROM public.get_my_dealer_snapshot())
   );
 
 -- Admin manages all dealers.
@@ -235,6 +252,8 @@ CREATE POLICY "dealer_insert_own_kyc"
   WITH CHECK (dealer_id = get_my_dealer_id());
 
 -- Dealer: update (re-upload) only their own pending/rejected documents.
+-- document_type is locked to its committed value to protect the UNIQUE(dealer_id, document_type)
+-- constraint from being sidestepped (M2).
 CREATE POLICY "dealer_update_own_pending_kyc"
   ON public.kyc_documents FOR UPDATE
   USING (
@@ -245,6 +264,7 @@ CREATE POLICY "dealer_update_own_pending_kyc"
     dealer_id = get_my_dealer_id()
     AND status IN ('pending', 'rejected')
     -- Dealers cannot change status; only admins do.
+    AND document_type = (SELECT document_type FROM public.kyc_documents WHERE id = kyc_documents.id)
   );
 
 -- Staff: read all KYC documents for review.
@@ -307,10 +327,20 @@ CREATE POLICY "authenticated_read_inventory"
   ON public.inventory FOR SELECT
   USING (auth.uid() IS NOT NULL);
 
--- Admin and staff manage inventory.
-CREATE POLICY "staff_manage_inventory"
-  ON public.inventory FOR ALL
+-- Staff can read/insert/update inventory but not delete it (deleting inventory rows
+-- cascades RESTRICT failures against inventory_transactions; DELETE is admin-only) (M3).
+CREATE POLICY "staff_insert_inventory"
+  ON public.inventory FOR INSERT
+  WITH CHECK (is_staff_or_above());
+
+CREATE POLICY "staff_update_inventory"
+  ON public.inventory FOR UPDATE
   USING (is_staff_or_above());
+
+-- Admin (and above) retain full management including DELETE.
+CREATE POLICY "admin_manage_all_inventory"
+  ON public.inventory FOR ALL
+  USING (is_admin_or_above());
 
 
 -- =============================================================================
@@ -343,11 +373,13 @@ CREATE POLICY "dealer_read_own_orders"
     AND deleted_at IS NULL
   );
 
--- Dealer: create orders only for themselves.
+-- Dealer: create orders only for themselves, and only while their account is active (H4).
+-- Suspended/pending_kyc/rejected dealers must not be able to place orders.
 CREATE POLICY "dealer_insert_own_orders"
   ON public.orders FOR INSERT
   WITH CHECK (
     dealer_id = get_my_dealer_id()
+    AND (SELECT status FROM public.get_my_dealer_snapshot()) = 'active'
   );
 
 -- Dealer: update only their own draft/pending orders (e.g. edit delivery notes).
@@ -504,13 +536,17 @@ CREATE POLICY "user_read_own_notifications"
   ON public.notifications FOR SELECT
   USING (user_id = auth.uid());
 
--- User: mark their own notifications as read.
+-- User: mark their own notifications as read. title/body/type/metadata are locked to
+-- their committed values so a user cannot rewrite the content of their own notifications (M1).
 CREATE POLICY "user_update_own_notifications"
   ON public.notifications FOR UPDATE
   USING (user_id = auth.uid())
   WITH CHECK (
     user_id = auth.uid()
-    -- Only allow is_read and read_at to change; enforce field-level on app layer.
+    AND title    = (SELECT title    FROM public.notifications WHERE id = notifications.id)
+    AND body     IS NOT DISTINCT FROM (SELECT body FROM public.notifications WHERE id = notifications.id)
+    AND type     = (SELECT type     FROM public.notifications WHERE id = notifications.id)
+    AND metadata IS NOT DISTINCT FROM (SELECT metadata FROM public.notifications WHERE id = notifications.id)
   );
 
 -- Users cannot insert notifications for themselves (system/service role only).
@@ -536,10 +572,10 @@ CREATE POLICY "user_revoke_own_sessions"
   USING (user_id = auth.uid())
   WITH CHECK (user_id = auth.uid());
 
--- User: insert new session at login (done via service role on the API layer).
-CREATE POLICY "user_insert_own_session"
-  ON public.sessions FOR INSERT
-  WITH CHECK (user_id = auth.uid());
+-- Session creation happens via the service role after a verified login (which bypasses
+-- RLS), so no authenticated-role INSERT policy is needed. Previously
+-- user_insert_own_session let any user register a fake device/IP session record (H3).
+-- Intentionally no user_insert_own_session policy here.
 
 -- Admin: full visibility and revocation.
 CREATE POLICY "admin_manage_all_sessions"
@@ -562,11 +598,11 @@ CREATE POLICY "super_admin_read_audit_logs"
   ON public.audit_logs FOR SELECT
   USING (is_super_admin());
 
--- Any authenticated user can insert an audit log (write via service role in practice).
+-- Audit logs must only be written by the service role, which bypasses RLS by design.
+-- Previously any authenticated user could INSERT arbitrary audit_logs rows (forge
+-- kyc_reviewed/login/otp_verified events, pollute the forensic trail) (C1).
+-- Intentionally no authenticated-role INSERT policy — no policy means no access.
 -- No UPDATE or DELETE policies exist → those operations are blocked for all users.
-CREATE POLICY "authenticated_insert_audit_log"
-  ON public.audit_logs FOR INSERT
-  WITH CHECK (auth.uid() IS NOT NULL);
 
 
 -- =============================================================================
