@@ -16,6 +16,8 @@ import {
   LogOut,
 } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
+import { useLiveRates } from "@/hooks/use-live-rates";
+import { fmtINR, fmtChange } from "@/lib/rates";
 import {
   Sheet,
   SheetContent,

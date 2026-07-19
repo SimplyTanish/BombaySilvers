@@ -16,31 +16,66 @@ import {
   Wallet,
   Plus,
   Bell,
+  RefreshCw,
+  WifiOff,
 } from "lucide-react";
+import { useLiveRates } from "@/hooks/use-live-rates";
+import {
+  fmtINR,
+  fmtChange,
+  fmtPct,
+  generateSparkline,
+} from "@/lib/rates";
+import type { MetalRate } from "@/lib/rates";
 
 export const Route = createFileRoute("/dashboard")({
   head: () => ({ meta: [{ title: "Dashboard · Bombay Silvers" }] }),
   component: Dashboard,
 });
 
-const goldSeries = Array.from({ length: 48 }, (_, i) => ({
-  t: i,
-  v: 71800 + Math.sin(i / 4) * 180 + i * 6 + (i > 32 ? 90 : 0),
-}));
-const silverSeries = Array.from({ length: 48 }, (_, i) => ({
-  t: i,
-  v: 89600 - Math.cos(i / 3) * 220 - i * 4,
-}));
+// ─── Helpers ─────────────────────────────────────────────────────────────────
+
+function timeAgo(epochMs: number): string {
+  const secs = Math.floor((Date.now() - epochMs) / 1000);
+  if (secs < 10) return "just now";
+  if (secs < 60) return `${secs}s ago`;
+  const mins = Math.floor(secs / 60);
+  if (mins < 60) return `${mins}m ago`;
+  return `${Math.floor(mins / 60)}h ago`;
+}
+
+// ─── Dashboard ───────────────────────────────────────────────────────────────
 
 function Dashboard() {
+  const { data, isLoading, isError, error, isFetching, refetch, dataUpdatedAt } =
+    useLiveRates();
+
+  const isApiKeyMissing =
+    isError && (error?.message ?? "").includes("GOLDAPI_KEY_MISSING");
+
   return (
     <AppShell>
       <PageTitle
-        title="Good morning, Rahul."
-        subtitle="Markets opened 32 min ago · MCX activity strong"
+        title="Good morning."
+        subtitle="Rates update every 5 minutes · MCX Mumbai"
         actions={
           <>
-            <LiveDot label="Live rates" />
+            {data && !isError ? (
+              <LiveDot label="Live rates" />
+            ) : isError ? (
+              <span className="inline-flex items-center gap-1.5 rounded-full border border-[var(--loss)]/40 bg-[var(--loss)]/10 px-2 py-0.5 font-mono text-[10px] uppercase tracking-[0.15em] text-[var(--loss)]">
+                <WifiOff className="h-3 w-3" /> Feed offline
+              </span>
+            ) : null}
+            <button
+              onClick={() => refetch()}
+              disabled={isFetching}
+              className="hidden sm:inline-flex h-9 items-center gap-2 rounded-xl border border-border/70 bg-[var(--surface-2)] px-3 text-sm hover:bg-[var(--surface-3)] disabled:opacity-50"
+              title="Refresh rates now"
+            >
+              <RefreshCw className={`h-4 w-4 ${isFetching ? "animate-spin" : ""}`} />
+              Refresh
+            </button>
             <button className="hidden sm:inline-flex h-9 items-center gap-2 rounded-xl border border-border/70 bg-[var(--surface-2)] px-3 text-sm hover:bg-[var(--surface-3)]">
               <Bell className="h-4 w-4" /> Alerts
             </button>
@@ -51,30 +86,68 @@ function Dashboard() {
         }
       />
 
+      {/* API key missing — one-time setup nudge */}
+      {isApiKeyMissing && (
+        <div className="mb-5 flex items-start gap-3 rounded-xl border border-[var(--warn)]/40 bg-[var(--warn)]/8 p-4 text-sm">
+          <WifiOff className="mt-0.5 h-4 w-4 shrink-0 text-[var(--warn)]" />
+          <div>
+            <div className="font-medium text-[var(--warn)]">Live rates not configured</div>
+            <div className="mt-0.5 text-muted-foreground">
+              Add your <span className="font-mono text-foreground">GOLDAPI_KEY</span> to Replit
+              Secrets. Get a free key at{" "}
+              <a
+                href="https://www.goldapi.io"
+                target="_blank"
+                rel="noreferrer"
+                className="underline hover:text-foreground"
+              >
+                goldapi.io
+              </a>
+              . Prices below are indicative.
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Last updated chip */}
+      {dataUpdatedAt > 0 && (
+        <div className="mb-4 text-[11px] text-muted-foreground">
+          Rates last updated {timeAgo(dataUpdatedAt)}
+          {data?.fromCache && " · served from cache"}
+        </div>
+      )}
+
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
         <RateCard
           label="Gold 999"
-          price="72,148"
-          delta="+312"
-          pct="+0.43%"
-          up
-          series={goldSeries}
-          hint="MCX Aug · per 10g"
+          hint="MCX · per 10g"
+          rate={data?.gold}
+          isLoading={isLoading}
+          isError={isError && !isApiKeyMissing}
+          fallbackPrice="72,148"
+          fallbackSeries={FALLBACK_GOLD_SERIES}
         />
         <RateCard
           label="Silver 999"
-          price="89,420"
-          delta="-145"
-          pct="-0.16%"
-          series={silverSeries}
-          hint="MCX Sep · per kg"
+          hint="MCX · per kg"
+          rate={data?.silver}
+          isLoading={isLoading}
+          isError={isError && !isApiKeyMissing}
+          fallbackPrice="89,420"
+          fallbackSeries={FALLBACK_SILVER_SERIES}
         />
         <GlassCard className="p-5">
           <div className="flex items-center justify-between">
             <div>
-              <div className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground">Inventory value</div>
-              <div className="metallic-text mt-2 font-mono text-3xl font-semibold">₹4.82 Cr</div>
-              <div className="mt-1 text-xs text-muted-foreground">Across 4 warehouses</div>
+              <div className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
+                Inventory value
+              </div>
+              <div className="metallic-text mt-2 font-mono text-3xl font-semibold">
+                ₹4.82 Cr
+              </div>
+              <div className="mt-1 text-xs text-muted-foreground">
+                Across 4 warehouses
+              </div>
             </div>
             <div className="grid h-12 w-12 place-items-center rounded-xl bg-[var(--surface-3)]">
               <Boxes className="h-6 w-6 text-[var(--platinum)]" />
@@ -86,9 +159,14 @@ function Dashboard() {
               ["Gold bars", "18.4 kg"],
               ["Coins", "6,412"],
             ].map(([l, v]) => (
-              <div key={l} className="rounded-lg border border-border/60 bg-[var(--surface-2)]/60 py-2">
+              <div
+                key={l}
+                className="rounded-lg border border-border/60 bg-[var(--surface-2)]/60 py-2"
+              >
                 <div className="font-mono text-sm">{v}</div>
-                <div className="text-[10px] uppercase tracking-widest text-muted-foreground">{l}</div>
+                <div className="text-[10px] uppercase tracking-widest text-muted-foreground">
+                  {l}
+                </div>
               </div>
             ))}
           </div>
@@ -98,7 +176,9 @@ function Dashboard() {
       <div className="mt-6 grid grid-cols-1 gap-4 lg:grid-cols-3">
         {/* Quick actions */}
         <GlassCard className="p-5 lg:col-span-1">
-          <div className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground">Quick actions</div>
+          <div className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
+            Quick actions
+          </div>
           <div className="mt-4 grid grid-cols-2 gap-3">
             {[
               { i: ScrollText, l: "Place order" },
@@ -123,10 +203,16 @@ function Dashboard() {
         <GlassCard className="p-5 lg:col-span-2">
           <div className="flex items-center justify-between">
             <div>
-              <div className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground">Recent orders</div>
-              <div className="mt-1 text-sm text-muted-foreground">Last 24 hours · 6 total</div>
+              <div className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
+                Recent orders
+              </div>
+              <div className="mt-1 text-sm text-muted-foreground">
+                Last 24 hours · 6 total
+              </div>
             </div>
-            <button className="text-xs text-muted-foreground hover:text-foreground">View all →</button>
+            <button className="text-xs text-muted-foreground hover:text-foreground">
+              View all →
+            </button>
           </div>
           <div className="mt-4 divide-y divide-border/60">
             {[
@@ -135,9 +221,14 @@ function Dashboard() {
               ["#BS-24-11271", "Silver bars · 100 kg", "Approved", "₹89.42 L", "warn"],
               ["#BS-24-11268", "Gold 999 · 500 g", "Delivered", "₹36.07 L", "gain"],
             ].map(([id, item, status, amt, tone]) => (
-              <div key={id} className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-4 py-3">
+              <div
+                key={id}
+                className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-4 py-3"
+              >
                 <div className="min-w-0">
-                  <div className="truncate font-mono text-xs text-muted-foreground">{id}</div>
+                  <div className="truncate font-mono text-xs text-muted-foreground">
+                    {id}
+                  </div>
                   <div className="truncate text-sm">{item}</div>
                 </div>
                 <div className="flex items-center gap-4">
@@ -162,7 +253,9 @@ function Dashboard() {
       {/* Notifications strip */}
       <GlassCard className="mt-6 p-5">
         <div className="flex items-center justify-between">
-          <div className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground">Notifications</div>
+          <div className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
+            Notifications
+          </div>
           <span className="text-xs text-muted-foreground">3 unread</span>
         </div>
         <div className="mt-3 grid gap-3 sm:grid-cols-3">
@@ -171,7 +264,10 @@ function Dashboard() {
             ["Ledger", "Payment of ₹18.42 L received", "1h ago", "gain"],
             ["Inventory", "Gold 100g bars restocked (Mumbai)", "3h ago", "info"],
           ].map(([t, d, ago, tone]) => (
-            <div key={t as string} className="rounded-xl border border-border/60 bg-[var(--surface-2)]/60 p-4">
+            <div
+              key={t as string}
+              className="rounded-xl border border-border/60 bg-[var(--surface-2)]/60 p-4"
+            >
               <div className="flex items-center gap-2">
                 <span
                   className={
@@ -195,64 +291,131 @@ function Dashboard() {
   );
 }
 
+// ─── RateCard ─────────────────────────────────────────────────────────────────
+
+// Fallback static series for when the API is unconfigured
+const FALLBACK_GOLD_SERIES = Array.from({ length: 48 }, (_, i) => ({
+  t: i,
+  v: 71_800 + Math.sin(i / 4) * 180 + i * 6 + (i > 32 ? 90 : 0),
+}));
+const FALLBACK_SILVER_SERIES = Array.from({ length: 48 }, (_, i) => ({
+  t: i,
+  v: 89_600 - Math.cos(i / 3) * 220 - i * 4,
+}));
+
 function RateCard({
   label,
-  price,
-  delta,
-  pct,
-  up,
-  series,
   hint,
+  rate,
+  isLoading,
+  isError,
+  fallbackPrice,
+  fallbackSeries,
 }: {
   label: string;
-  price: string;
-  delta: string;
-  pct: string;
-  up?: boolean;
-  series: { t: number; v: number }[];
   hint: string;
+  rate?: MetalRate;
+  isLoading: boolean;
+  isError: boolean;
+  fallbackPrice: string;
+  fallbackSeries: { t: number; v: number }[];
 }) {
+  // Derive display values from live data or fall back gracefully
+  const price = rate ? fmtINR(rate.priceINR) : fallbackPrice;
+  const delta = rate ? fmtChange(rate.changeAbs) : "—";
+  const pct = rate ? fmtPct(rate.changePct) : "—";
+  const up = rate ? rate.up : true;
+  const series = rate
+    ? generateSparkline(rate.prevINR, rate.priceINR)
+    : fallbackSeries;
+
   const color = up ? "var(--gain)" : "var(--loss)";
+
   return (
     <GlassCard className="relative overflow-hidden p-5">
-      <div className="flex items-start justify-between">
-        <div>
-          <div className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground">{label}</div>
-          <div className="metallic-text mt-2 font-mono text-3xl font-semibold">₹{price}</div>
-          <div className="mt-1 text-xs text-muted-foreground">{hint}</div>
+      {/* Loading pulse overlay */}
+      {isLoading && (
+        <div className="absolute inset-0 z-10 flex flex-col gap-3 p-5">
+          <div className="h-3 w-24 animate-pulse rounded-full bg-[var(--surface-3)]" />
+          <div className="h-8 w-36 animate-pulse rounded-lg bg-[var(--surface-3)]" />
+          <div className="h-3 w-20 animate-pulse rounded-full bg-[var(--surface-3)]" />
+          <div className="mt-auto h-24 animate-pulse rounded-xl bg-[var(--surface-3)]" />
         </div>
-        <div
-          className="flex items-center gap-1 rounded-full px-2 py-1 font-mono text-xs"
-          style={{ background: `color-mix(in oklab, ${color} 15%, transparent)`, color }}
-        >
-          {up ? <ArrowUpRight className="h-3.5 w-3.5" /> : <ArrowDownRight className="h-3.5 w-3.5" />}
-          {delta} · {pct}
-        </div>
-      </div>
-      <div className="mt-4 h-24">
-        <ResponsiveContainer width="100%" height="100%">
-          <AreaChart data={series} margin={{ top: 4, right: 0, left: 0, bottom: 0 }}>
-            <defs>
-              <linearGradient id={`g-${label}`} x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stopColor={color} stopOpacity={0.5} />
-                <stop offset="100%" stopColor={color} stopOpacity={0} />
-              </linearGradient>
-            </defs>
-            <XAxis dataKey="t" hide />
-            <YAxis hide domain={["dataMin - 60", "dataMax + 60"]} />
-            <Tooltip
-              contentStyle={{
-                background: "var(--surface-2)",
-                border: "1px solid var(--border)",
-                borderRadius: 8,
-                fontSize: 11,
+      )}
+
+      <div className={isLoading ? "invisible" : undefined}>
+        <div className="flex items-start justify-between">
+          <div>
+            <div className="flex items-center gap-2">
+              <div className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
+                {label}
+              </div>
+              {isError && (
+                <span className="text-[10px] text-[var(--loss)]">· stale</span>
+              )}
+            </div>
+            <div className="metallic-text mt-2 font-mono text-3xl font-semibold">
+              ₹{price}
+            </div>
+            <div className="mt-1 text-xs text-muted-foreground">{hint}</div>
+          </div>
+          {rate ? (
+            <div
+              className="flex items-center gap-1 rounded-full px-2 py-1 font-mono text-xs"
+              style={{
+                background: `color-mix(in oklab, ${color} 15%, transparent)`,
+                color,
               }}
-              labelStyle={{ color: "var(--muted-foreground)" }}
-              formatter={(v: number) => [`₹${v.toFixed(0)}`, label]}
-            />
-            <Area type="monotone" dataKey="v" stroke={color} strokeWidth={1.5} fill={`url(#g-${label})`} />
-          </AreaChart>
-        </ResponsiveContainer>
+            >
+              {up ? (
+                <ArrowUpRight className="h-3.5 w-3.5" />
+              ) : (
+                <ArrowDownRight className="h-3.5 w-3.5" />
+              )}
+              {delta} · {pct}
+            </div>
+          ) : (
+            <div className="flex items-center gap-1 rounded-full border border-border/60 px-2 py-1 font-mono text-xs text-muted-foreground">
+              {delta} · {pct}
+            </div>
+          )}
+        </div>
+        <div className="mt-4 h-24">
+          <ResponsiveContainer width="100%" height="100%">
+            <AreaChart data={series} margin={{ top: 4, right: 0, left: 0, bottom: 0 }}>
+              <defs>
+                <linearGradient id={`g-${label}`} x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor={color} stopOpacity={0.5} />
+                  <stop offset="100%" stopColor={color} stopOpacity={0} />
+                </linearGradient>
+              </defs>
+              <XAxis dataKey="t" hide />
+              <YAxis hide domain={["dataMin - 60", "dataMax + 60"]} />
+              <Tooltip
+                contentStyle={{
+                  background: "var(--surface-2)",
+                  border: "1px solid var(--border)",
+                  borderRadius: 8,
+                  fontSize: 11,
+                }}
+                labelStyle={{ color: "var(--muted-foreground)" }}
+                formatter={(v: number) => [`₹${fmtINR(v)}`, label]}
+              />
+              <Area
+                type="monotone"
+                dataKey="v"
+                stroke={color}
+                strokeWidth={1.5}
+                fill={`url(#g-${label})`}
+              />
+            </AreaChart>
+          </ResponsiveContainer>
+        </div>
+        {rate && (
+          <div className="mt-2 text-right text-[10px] text-muted-foreground">
+            Prev close ₹{fmtINR(rate.prevINR)}
+          </div>
+        )}
       </div>
     </GlassCard>
   );
