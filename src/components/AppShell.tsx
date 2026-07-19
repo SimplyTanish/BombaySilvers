@@ -55,21 +55,33 @@ export function BrandMark({ compact = false }: { compact?: boolean }) {
 }
 
 export function RateTicker() {
+  // Pull live gold & silver into the ticker; the rest stay static.
+  const { data } = useLiveRates();
+
+  const goldPrice  = data ? fmtINR(data.gold.priceINR)     : "—";
+  const goldDelta  = data ? fmtChange(data.gold.changeAbs)  : "—";
+  const goldUp     = data ? data.gold.up                    : true;
+
+  const silverPrice = data ? fmtINR(data.silver.priceINR)    : "—";
+  const silverDelta = data ? fmtChange(data.silver.changeAbs) : "—";
+  const silverUp    = data ? data.silver.up                   : false;
+
   const items = [
-    { s: "GOLD 999", p: "72,148", d: "+312", up: true },
-    { s: "GOLD 995", p: "71,860", d: "+310", up: true },
-    { s: "SILVER 999", p: "89,420", d: "-145", up: false },
-    { s: "PLATINUM", p: "31,200", d: "+18", up: true },
-    { s: "MCX GOLD", p: "72,205", d: "+289", up: true },
-    { s: "USD/INR", p: "83.42", d: "-0.06", up: false },
-    { s: "LBMA AM", p: "$2,342", d: "+8.20", up: true },
+    { s: "GOLD 999",   p: goldPrice,   d: goldDelta,  up: goldUp,    prefix: "₹" },
+    { s: "GOLD 995",   p: "71,860",    d: "+310",     up: true,      prefix: "₹" },
+    { s: "SILVER 999", p: silverPrice, d: silverDelta, up: silverUp, prefix: "₹" },
+    { s: "PLATINUM",   p: "31,200",    d: "+18",      up: true,      prefix: "₹" },
+    { s: "MCX GOLD",   p: "72,205",    d: "+289",     up: true,      prefix: "₹" },
+    { s: "USD/INR",    p: "83.42",     d: "-0.06",    up: false,     prefix: ""  },
+    { s: "LBMA AM",    p: "2,342",     d: "+8.20",    up: true,      prefix: "$" },
   ];
+
   const row = (key: string) => (
     <div key={key} className="flex shrink-0 items-center gap-8 pr-8 font-mono text-[12px]">
       {items.map((i, idx) => (
         <div key={idx} className="flex items-center gap-2">
           <span className="text-muted-foreground">{i.s}</span>
-          <span className="text-foreground">₹{i.p}</span>
+          <span className="text-foreground">{i.prefix}{i.p}</span>
           <span style={{ color: i.up ? "var(--gain)" : "var(--loss)" }}>
             {i.d}
           </span>
@@ -77,6 +89,7 @@ export function RateTicker() {
       ))}
     </div>
   );
+
   return (
     <div className="relative flex overflow-hidden border-y border-border/60 bg-[var(--surface-1)]/60 py-2">
       <div className="flex animate-[ticker_45s_linear_infinite] whitespace-nowrap">

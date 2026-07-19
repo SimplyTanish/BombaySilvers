@@ -1,3 +1,4 @@
 - [Replit webview 502 with dual port mappings](replit-port-mapping-502.md) — duplicate `.replit` port entries mapping to the same externalPort cause public proxy 502s even when the server is healthy.
 - [Supabase SSR WebSocket fix](supabase-ssr-websocket.md) — Node.js 20 has no native WebSocket; use `import.meta.env.SSR` + top-level `await import("ws")` to pass `ws` as `realtime.transport` in SSR only.
 - [TanStack Start auth pattern](tanstack-start-auth-pattern.md) — auth guard lives in AppShell via `useEffect`; login calls `signInWithOtp`; OTP calls `verifyOtp`; search params carry phone between routes.
+- [GoldAPI live rates pattern](goldapi-rates-pattern.md) — server function + 5-min in-memory cache; key `GOLDAPI_KEY` in Replit Secrets; gold per 10g, silver per kg; sin-wave sparkline avoids SSR hydration mismatch.
