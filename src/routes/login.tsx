@@ -1,8 +1,11 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
+
+const DEV_ADMIN = import.meta.env.DEV;
 import { BrandMark } from "@/components/AppShell";
-import { ArrowRight, ShieldCheck, Loader2 } from "lucide-react";
+import { ArrowRight, ShieldCheck, Loader2, WifiOff } from "lucide-react";
 import { supabase } from "@/lib/supabase";
+import { lookupEmailByPhone } from "@/lib/auth-fns";
 
 export const Route = createFileRoute("/login")({
   head: () => ({ meta: [{ title: "Sign in · Bombay Silvers" }] }),
@@ -11,35 +14,79 @@ export const Route = createFileRoute("/login")({
 
 function Login() {
   const navigate = useNavigate();
-  const [phone, setPhone] = useState("9820412876");
+  const [phone, setPhone] = useState("");
   const [trustDevice, setTrustDevice] = useState(true);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [notRegistered, setNotRegistered] = useState(false);
+  const [adminEmail, setAdminEmail] = useState("");
+  const [adminPassword, setAdminPassword] = useState("");
+  const [adminLoading, setAdminLoading] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const cleaned = phone.replace(/\s+/g, "").replace(/^0+/, "");
+    const cleaned = phone.replace(/\D/g, "").replace(/^0+/, "");
     if (cleaned.length < 10) {
-      setError("Please enter a valid 10-digit mobile number.");
+      setError("Enter a valid 10-digit mobile number.");
       return;
     }
     const fullPhone = `+91${cleaned}`;
     setLoading(true);
     setError(null);
-    const { error: otpError } = await supabase.auth.signInWithOtp({
-      phone: fullPhone,
-    });
-    setLoading(false);
-    if (otpError) {
-      setError(otpError.message);
+    setNotRegistered(false);
+
+    // Look up email registered to this phone number
+    const result = await lookupEmailByPhone({ data: { phone: fullPhone } });
+    if (!result.found) {
+      setLoading(false);
+      setNotRegistered(true);
       return;
     }
-    navigate({ to: "/otp", search: { phone: fullPhone, trust: trustDevice } });
+
+    // Email found → send email OTP (works without Twilio/SMS)
+    const { error: otpErr } = await supabase.auth.signInWithOtp({
+      email: result.email,
+      options: { shouldCreateUser: false },
+    });
+    setLoading(false);
+    if (otpErr) {
+      setError(otpErr.message);
+      return;
+    }
+
+    navigate({
+      to: "/otp",
+      search: {
+        email: result.email,
+        phone: fullPhone,
+        trust: trustDevice,
+        flow: "login",
+      },
+    });
+  };
+
+  const handleAdminLogin = async () => {
+    setAdminLoading(true);
+    setError(null);
+
+    const { error } = await supabase.auth.signInWithPassword({
+      email: adminEmail,
+      password: adminPassword,
+    });
+
+    setAdminLoading(false);
+
+    if (error) {
+      setError(error.message);
+      return;
+    }
+
+    navigate({ to: "/dashboard" });
   };
 
   return (
     <div className="grid min-h-screen lg:grid-cols-[1.05fr_1fr]">
-      {/* Left brand pane (desktop only) */}
+      {/* Brand pane */}
       <div className="relative hidden overflow-hidden border-r border-border/60 lg:block">
         <div className="grid-lines absolute inset-0 opacity-40" />
         <div className="absolute -left-40 top-1/3 h-[560px] w-[560px] rounded-full bg-[radial-gradient(closest-side,oklch(0.9_0.02_260/0.2),transparent)]" />
@@ -69,16 +116,21 @@ function Login() {
         </div>
       </div>
 
-      {/* Right form pane / mobile full */}
+      {/* Form pane */}
       <div className="relative flex items-center justify-center p-6">
         <div className="w-full max-w-md">
           <div className="mb-8 lg:hidden">
             <BrandMark />
           </div>
+
           <form onSubmit={handleSubmit}>
             <div className="glass rounded-3xl p-6 sm:p-8">
-              <div className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground">Dealer sign in</div>
-              <h1 className="mt-2 text-2xl font-semibold tracking-tight sm:text-3xl">Welcome back.</h1>
+              <div className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
+                Dealer sign in
+              </div>
+              <h1 className="mt-2 text-2xl font-semibold tracking-tight sm:text-3xl">
+                Welcome back.
+              </h1>
               <p className="mt-1 text-sm text-muted-foreground">
                 Enter your registered mobile number to continue.
               </p>
@@ -97,17 +149,39 @@ function Login() {
                     onChange={(e) => {
                       setPhone(e.target.value);
                       setError(null);
+                      setNotRegistered(false);
                     }}
                     placeholder="98765 43210"
                     maxLength={11}
+                    autoFocus
                     className="h-12 flex-1 rounded-xl border border-border/70 bg-[var(--surface-2)] px-4 font-mono text-lg tracking-wider outline-none focus:border-[var(--silver-muted)]"
                   />
                 </div>
 
+                {/* Error */}
                 {error && (
                   <p className="rounded-lg border border-[var(--loss)]/30 bg-[var(--loss)]/10 px-3 py-2 text-xs text-[var(--loss)]">
                     {error}
                   </p>
+                )}
+
+                {/* Not registered state */}
+                {notRegistered && (
+                  <div className="rounded-xl border border-[var(--warn)]/30 bg-[var(--warn)]/8 p-4">
+                    <div className="flex items-center gap-2 text-sm font-medium text-[var(--warn)]">
+                      <WifiOff className="h-4 w-4" />
+                      Number not registered
+                    </div>
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      This mobile number isn't linked to a dealer account. Apply below to get access.
+                    </p>
+                    <Link
+                      to="/onboarding"
+                      className="mt-3 inline-flex items-center gap-1.5 rounded-lg border border-border/70 bg-[var(--surface-2)] px-3 py-1.5 text-xs text-foreground hover:bg-[var(--surface-3)]"
+                    >
+                      Apply as a dealer <ArrowRight className="h-3 w-3" />
+                    </Link>
+                  </div>
                 )}
 
                 <label className="mt-2 flex items-center gap-2 text-xs text-muted-foreground">
@@ -129,7 +203,7 @@ function Login() {
                     <Loader2 className="h-4 w-4 animate-spin" />
                   ) : (
                     <>
-                      Send secure OTP
+                      Continue
                       <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
                     </>
                   )}
@@ -146,11 +220,47 @@ function Login() {
                 >
                   Sign in with dealer ID
                 </button>
+
+                {DEV_ADMIN && (
+                  <div className="mt-8 rounded-xl border border-border/70 p-4">
+                    <div className="mb-3 text-xs font-semibold uppercase tracking-wider">
+                      Development Admin Login
+                    </div>
+
+                    <input
+                      type="email"
+                      placeholder="admin@bombaysilvers.com"
+                      value={adminEmail}
+                      onChange={(e) => setAdminEmail(e.target.value)}
+                      className="mb-3 h-11 w-full rounded-lg border px-3"
+                    />
+
+                    <input
+                      type="password"
+                      placeholder="Password"
+                      value={adminPassword}
+                      onChange={(e) => setAdminPassword(e.target.value)}
+                      className="mb-3 h-11 w-full rounded-lg border px-3"
+                    />
+
+                    <button
+                      type="button"
+                      onClick={handleAdminLogin}
+                      disabled={adminLoading}
+                      className="h-11 w-full rounded-lg bg-white text-black"
+                    >
+                      {adminLoading ? "Signing in..." : "Admin Login"}
+                    </button>
+                  </div>
+                )}
               </div>
 
               <div className="mt-8 text-center text-xs text-muted-foreground">
                 New to Bombay Silvers?{" "}
-                <Link to="/onboarding" className="text-foreground underline underline-offset-4">
+                <Link
+                  to="/onboarding"
+                  className="text-foreground underline underline-offset-4"
+                >
                   Apply as a dealer
                 </Link>
               </div>
@@ -158,7 +268,7 @@ function Login() {
           </form>
 
           <p className="mt-6 text-center text-[11px] text-muted-foreground">
-            Protected by CSRF, rate limiting and device fingerprinting.
+            Login uses a secure one-time code sent to your registered email.
           </p>
         </div>
       </div>

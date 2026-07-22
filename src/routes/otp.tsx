@@ -1,82 +1,111 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { BrandMark } from "@/components/AppShell";
-import { ShieldCheck, ArrowRight, Loader2 } from "lucide-react";
+import { ShieldCheck, ArrowRight, Loader2, Mail } from "lucide-react";
 import {
   InputOTP,
   InputOTPGroup,
   InputOTPSlot,
 } from "@/components/ui/input-otp";
 import { supabase } from "@/lib/supabase";
+import { saveDealerProfile } from "@/lib/auth-fns";
 
 export const Route = createFileRoute("/otp")({
   head: () => ({ meta: [{ title: "Verify OTP · Bombay Silvers" }] }),
   validateSearch: (search: Record<string, unknown>) => ({
+    email: typeof search.email === "string" ? search.email : "",
     phone: typeof search.phone === "string" ? search.phone : "",
     trust: search.trust === true || search.trust === "true",
+    flow: search.flow === "register" ? "register" : ("login" as "login" | "register"),
   }),
   component: OTP,
 });
 
+/** Mask an email: rahul@gmail.com → r***l@g***.com */
+function maskEmail(email: string): string {
+  const [local, domain] = email.split("@");
+  if (!domain || local.length < 2) return email;
+  const [domainName, ...rest] = domain.split(".");
+  const maskedLocal =
+    local[0] + "*".repeat(Math.max(local.length - 2, 1)) + local.slice(-1);
+  const maskedDomain =
+    domainName[0] + "*".repeat(Math.max(domainName.length - 1, 1));
+  return `${maskedLocal}@${maskedDomain}.${rest.join(".")}`;
+}
+
 function OTP() {
   const navigate = useNavigate();
-  const { phone, trust } = Route.useSearch();
+  const { email, phone, trust, flow } = Route.useSearch();
   const [otp, setOtp] = useState("");
   const [loading, setLoading] = useState(false);
   const [resending, setResending] = useState(false);
-  const [resendCountdown, setResendCountdown] = useState(30);
+  const [countdown, setCountdown] = useState(30);
   const [error, setError] = useState<string | null>(null);
 
-  // Start countdown on mount
-  useState(() => {
-    const interval = setInterval(() => {
-      setResendCountdown((c) => {
-        if (c <= 1) {
-          clearInterval(interval);
-          return 0;
-        }
-        return c - 1;
-      });
-    }, 1000);
-    return () => clearInterval(interval);
-  });
+  // Countdown timer
+  useEffect(() => {
+    if (countdown <= 0) return;
+    const t = setTimeout(() => setCountdown((c) => c - 1), 1000);
+    return () => clearTimeout(t);
+  }, [countdown]);
 
   const displayPhone = phone
-    ? phone.replace("+91", "").replace(/(\d{5})(\d{5})/, "$1 $2")
-    : "your number";
+    ? `+91 ${phone.replace("+91", "").replace(/(\d{5})(\d{5})/, "$1 $2")}`
+    : null;
+  const displayEmail = email ? maskEmail(email) : "your registered email";
 
   const handleVerify = async () => {
-    if (otp.length < 6) return;
+    if (otp.length < 6 || !email) return;
     setLoading(true);
     setError(null);
-    const { error: verifyError } = await supabase.auth.verifyOtp({
-      phone,
+
+    const { error: verifyErr } = await supabase.auth.verifyOtp({
+      email,
       token: otp,
-      type: "sms",
+      type: "email",
     });
-    setLoading(false);
-    if (verifyError) {
-      setError(verifyError.message);
+
+    if (verifyErr) {
+      setLoading(false);
+      setError(verifyErr.message);
       setOtp("");
       return;
     }
+
+    // Registration flow: save dealer profile from sessionStorage
+    if (flow === "register") {
+      try {
+        const raw = sessionStorage.getItem("dealer_draft");
+        if (raw) {
+          const draft = JSON.parse(raw) as Record<string, unknown>;
+          await saveDealerProfile({ data: draft });
+          sessionStorage.removeItem("dealer_draft");
+        }
+        // Mark KYC as not started in user metadata
+        await supabase.auth.updateUser({ data: { kyc_status: "none" } });
+      } catch {
+        // Non-fatal — user is authenticated, profile save will retry
+      }
+      setLoading(false);
+      navigate({ to: "/kyc" });
+      return;
+    }
+
+    setLoading(false);
     navigate({ to: "/dashboard" });
   };
 
   const handleResend = async () => {
-    if (resendCountdown > 0) return;
+    if (countdown > 0 || resending || !email) return;
     setResending(true);
-    await supabase.auth.signInWithOtp({ phone });
+    await supabase.auth.signInWithOtp({
+      email,
+      options: { shouldCreateUser: flow === "register" },
+    });
     setResending(false);
-    setResendCountdown(30);
+    setCountdown(30);
     setOtp("");
     setError(null);
-    const interval = setInterval(() => {
-      setResendCountdown((c) => {
-        if (c <= 1) { clearInterval(interval); return 0; }
-        return c - 1;
-      });
-    }, 1000);
   };
 
   return (
@@ -85,20 +114,32 @@ function OTP() {
         <div className="mb-8 flex items-center justify-between">
           <BrandMark />
           <span className="font-mono text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
-            Step 2 / 2
+            {flow === "register" ? "Registration" : "Sign in"} · Step 2
           </span>
         </div>
 
         <div className="glass rounded-3xl p-6 sm:p-8">
           <div className="inline-flex items-center gap-2 rounded-full border border-border/70 bg-[var(--surface-2)] px-3 py-1 text-[11px] text-muted-foreground">
             <ShieldCheck className="h-3.5 w-3.5 text-[var(--gain)]" />
-            One-time password sent
+            One-time code sent
           </div>
-          <h1 className="mt-4 text-2xl font-semibold tracking-tight">Enter 6-digit OTP</h1>
-          <p className="mt-1 text-sm text-muted-foreground">
-            We sent a code to{" "}
-            <span className="text-foreground">+91 {displayPhone}</span>.
-          </p>
+
+          <h1 className="mt-4 text-2xl font-semibold tracking-tight">
+            Enter 6-digit code
+          </h1>
+
+          <div className="mt-1 flex items-start gap-2 text-sm text-muted-foreground">
+            <Mail className="mt-0.5 h-4 w-4 shrink-0 text-[var(--platinum)]" />
+            <span>
+              We emailed a code to{" "}
+              <span className="font-mono text-foreground">{displayEmail}</span>
+              {displayPhone && (
+                <span className="ml-1 text-muted-foreground">
+                  (account linked to {displayPhone})
+                </span>
+              )}
+            </span>
+          </div>
 
           <div className="mt-8 flex justify-center">
             <InputOTP
@@ -131,14 +172,14 @@ function OTP() {
           <div className="mt-4 flex items-center justify-between text-xs">
             <button
               onClick={handleResend}
-              disabled={resendCountdown > 0 || resending}
+              disabled={countdown > 0 || resending}
               className="font-mono text-muted-foreground disabled:cursor-not-allowed disabled:opacity-60"
             >
-              {resendCountdown > 0
-                ? `Resend in 00:${String(resendCountdown).padStart(2, "0")}`
+              {countdown > 0
+                ? `Resend in 00:${String(countdown).padStart(2, "0")}`
                 : resending
                   ? "Sending…"
-                  : "Resend OTP"}
+                  : "Resend code"}
             </button>
             <button
               onClick={() => navigate({ to: "/login" })}
@@ -157,16 +198,23 @@ function OTP() {
               <Loader2 className="h-4 w-4 animate-spin" />
             ) : (
               <>
-                Verify & enter terminal <ArrowRight className="h-4 w-4" />
+                {flow === "register" ? "Verify & continue" : "Verify & enter terminal"}
+                <ArrowRight className="h-4 w-4" />
               </>
             )}
           </button>
 
           <div className="mt-6 rounded-xl border border-border/60 bg-[var(--surface-2)]/60 p-3 text-[11px] text-muted-foreground">
-            <div className="font-mono uppercase tracking-widest text-[10px] text-[var(--platinum)]">Session details</div>
+            <div className="font-mono text-[10px] uppercase tracking-widest text-[var(--platinum)]">
+              Session details
+            </div>
             <div className="mt-1 grid grid-cols-2 gap-1">
+              <span>Auth method</span>
+              <span className="text-right text-foreground">Email OTP</span>
               <span>Trust device</span>
-              <span className="text-right text-foreground">{trust ? "Yes · 30 days" : "No"}</span>
+              <span className="text-right text-foreground">
+                {trust ? "Yes · 30 days" : "No"}
+              </span>
               <span>Expires</span>
               <span className="text-right text-foreground">in 8 hours</span>
             </div>

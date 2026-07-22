@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { AppShell, GlassCard, PageTitle } from "@/components/AppShell";
 import { CheckCircle2, Circle, Truck, PackageCheck, Clock, Plus } from "lucide-react";
+import { KycGate } from "@/components/KycGate";
 
 export const Route = createFileRoute("/orders")({
   head: () => ({ meta: [{ title: "Orders · Bombay Silvers" }] }),

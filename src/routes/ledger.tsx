@@ -2,6 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { AppShell, GlassCard, PageTitle } from "@/components/AppShell";
 import { Bar, BarChart, ResponsiveContainer, XAxis, YAxis, Tooltip } from "recharts";
 import { Download, TrendingUp } from "lucide-react";
+import { KycGate } from "@/components/KycGate";
 
 export const Route = createFileRoute("/ledger")({
   head: () => ({ meta: [{ title: "Ledger · Bombay Silvers" }] }),
@@ -40,6 +41,7 @@ function Ledger() {
         }
       />
 
+      <KycGate feature="view your ledger">
       <div className="grid gap-4 lg:grid-cols-4">
         <GlassCard className="p-5 lg:col-span-1">
           <div className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground">Outstanding</div>
@@ -101,6 +103,7 @@ function Ledger() {
           ))}
         </div>
       </GlassCard>
+      </KycGate>
     </AppShell>
   );
 }

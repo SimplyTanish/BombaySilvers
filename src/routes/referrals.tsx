@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { AppShell, GlassCard, PageTitle } from "@/components/AppShell";
 import { Copy, Share2, Gift, Users2, TrendingUp } from "lucide-react";
+import { KycGate } from "@/components/KycGate";
 
 export const Route = createFileRoute("/referrals")({
   head: () => ({ meta: [{ title: "Referrals · Bombay Silvers" }] }),

@@ -45,23 +45,27 @@ RETURNS BOOLEAN AS $$
 $$ LANGUAGE sql STABLE SECURITY DEFINER SET search_path = public;
 
 CREATE OR REPLACE FUNCTION public.is_dealer()
-RETURNS BOOLEAN AS $
+RETURNS BOOLEAN AS $$
   SELECT get_my_role() = 'dealer';
-$ LANGUAGE sql STABLE SECURITY DEFINER SET search_path = public;
+$$ LANGUAGE sql STABLE SECURITY DEFINER SET search_path = public;
 
 -- Reads a target user's role without re-triggering RLS on public.users.
 -- Used by policies ON public.users to avoid self-recursion (see admin_manage_non_admin_users).
 CREATE OR REPLACE FUNCTION public.get_user_role(target_id UUID)
-RETURNS public.user_role AS $
+RETURNS public.user_role AS $$
   SELECT role FROM public.users WHERE id = target_id;
-$ LANGUAGE sql STABLE SECURITY DEFINER SET search_path = public;
+$$ LANGUAGE sql STABLE SECURITY DEFINER SET search_path = public;
 
 -- Snapshot of the caller's own dealer row without re-triggering RLS on public.dealers.
 -- Used by dealer_update_own_dealer to avoid 6x self-recursive sub-selects.
 CREATE OR REPLACE FUNCTION public.get_my_dealer_snapshot()
-RETURNS public.dealers AS $
-  SELECT * FROM public.dealers WHERE user_id = auth.uid() AND deleted_at IS NULL LIMIT 1;
-$ LANGUAGE sql STABLE SECURITY DEFINER SET search_path = public;
+RETURNS public.dealers AS $$
+  SELECT *
+  FROM public.dealers
+  WHERE user_id = auth.uid()
+    AND deleted_at IS NULL
+  LIMIT 1;
+$$ LANGUAGE sql STABLE SECURITY DEFINER SET search_path = public;
 
 
 -- =============================================================================
@@ -613,6 +617,31 @@ CREATE POLICY "super_admin_read_audit_logs"
 -- Actual row visibility is controlled by the RLS policies above.
 GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO authenticated;
 GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO authenticated;
+
+-- Restrict access to helper functions: deny public/anonymous, allow authenticated.
+REVOKE ALL ON FUNCTION public.get_my_role() FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.get_my_role() TO authenticated;
+
+REVOKE ALL ON FUNCTION public.get_my_dealer_id() FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.get_my_dealer_id() TO authenticated;
+
+REVOKE ALL ON FUNCTION public.is_super_admin() FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.is_super_admin() TO authenticated;
+
+REVOKE ALL ON FUNCTION public.is_admin_or_above() FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.is_admin_or_above() TO authenticated;
+
+REVOKE ALL ON FUNCTION public.is_staff_or_above() FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.is_staff_or_above() TO authenticated;
+
+REVOKE ALL ON FUNCTION public.is_dealer() FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.is_dealer() TO authenticated;
+
+REVOKE ALL ON FUNCTION public.get_user_role(UUID) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.get_user_role(UUID) TO authenticated;
+
+REVOKE ALL ON FUNCTION public.get_my_dealer_snapshot() FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.get_my_dealer_snapshot() TO authenticated;
 
 -- The 'anon' role should have no access to any business data.
 REVOKE ALL ON ALL TABLES IN SCHEMA public FROM anon;

@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { AppShell, GlassCard, PageTitle } from "@/components/AppShell";
 import { Download, FileText, Search } from "lucide-react";
+import { KycGate } from "@/components/KycGate";
 
 export const Route = createFileRoute("/invoices")({
   head: () => ({ meta: [{ title: "Invoices · Bombay Silvers" }] }),

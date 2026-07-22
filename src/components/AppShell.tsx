@@ -117,11 +117,13 @@ function SidebarNav({
   user,
   onSignOut,
   onNav,
+  role,
 }: {
   pathname: string;
   user: { phone?: string | null; email?: string | null } | null;
   onSignOut: () => void;
   onNav?: () => void;
+  role: string | null;
 }) {
   const displayName = user?.phone
     ? user.phone.replace("+91", "+91 ").replace(/(\+91 )(\d{5})(\d{5})/, "$1$2 $3")
@@ -154,28 +156,36 @@ function SidebarNav({
           );
         })}
       </nav>
-      <div className="mt-4 px-1 pb-2 text-[10px] uppercase tracking-[0.2em] text-muted-foreground">Operations</div>
-      <nav className="flex flex-col gap-0.5">
-        {adminNav.map(({ to, label, icon: Icon }) => {
-          const active = pathname === to;
-          return (
-            <Link
-              key={to}
-              to={to}
-              onClick={onNav}
-              className={
-                "flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors " +
-                (active
-                  ? "bg-[var(--surface-3)] text-foreground"
-                  : "text-muted-foreground hover:bg-[var(--surface-2)] hover:text-foreground")
-              }
-            >
-              <Icon className="h-4 w-4" />
-              <span>{label}</span>
-            </Link>
-          );
-        })}
-      </nav>
+      {(role === "admin" || role === "super_admin") && (
+        <>
+          <div className="mt-4 px-1 pb-2 text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
+            Operations
+          </div>
+
+          <nav className="flex flex-col gap-0.5">
+            {adminNav.map(({ to, label, icon: Icon }) => {
+              const active = pathname === to;
+
+              return (
+                <Link
+                  key={to}
+                  to={to}
+                  onClick={onNav}
+                  className={
+                    "flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors " +
+                    (active
+                      ? "bg-[var(--surface-3)] text-foreground"
+                      : "text-muted-foreground hover:bg-[var(--surface-2)] hover:text-foreground")
+                  }
+                >
+                  <Icon className="h-4 w-4" />
+                  <span>{label}</span>
+                </Link>
+              );
+            })}
+          </nav>
+        </>
+      )}
       <div className="mt-auto space-y-2">
         <div className="rounded-xl border border-border/60 bg-[var(--surface-2)]/60 p-3">
           <div className="flex items-center gap-2.5">
@@ -254,7 +264,20 @@ function BottomNav() {
 }
 
 export function AppShell({ children }: { children: ReactNode }) {
-  const { session, user, loading, signOut } = useAuth();
+  const {
+    session,
+    user,
+    dbUser,
+    role,
+    dealer,
+    loading,
+    signOut,
+  } = useAuth();
+
+  console.log("Current Role:", role);
+  console.log("Database User:", dbUser);
+  console.log("Dealer:", dealer);
+
   const navigate = useNavigate();
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -285,6 +308,7 @@ export function AppShell({ children }: { children: ReactNode }) {
             pathname={pathname}
             user={user}
             onSignOut={handleSignOut}
+            role={role}
           />
         </aside>
 
@@ -299,6 +323,7 @@ export function AppShell({ children }: { children: ReactNode }) {
               user={user}
               onSignOut={handleSignOut}
               onNav={() => setSidebarOpen(false)}
+              role={role}
             />
           </SheetContent>
         </Sheet>
