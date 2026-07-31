@@ -444,7 +444,7 @@ function Step3({ kycSkipped, onSkip }: { kycSkipped: boolean; onSkip: () => void
 // ─── Step 4 — Review & Submit ─────────────────────────────────────────────────
 
 function Step4({ form, kycSkipped }: { form: FormData; kycSkipped: boolean }) {
-  const rows: [string, string][] = [
+  const rows: Array<[string, string]> = [
     ["Firm name", form.firmName],
     ["Contact person", form.contactName],
     ["Mobile number", `+91 ${form.phone.replace(/\D/g, "")}`],
@@ -455,7 +455,7 @@ function Step4({ form, kycSkipped }: { form: FormData; kycSkipped: boolean }) {
     ["Years in business", form.yearsInBusiness],
     ["Monthly turnover", form.monthlyTurnover],
     ["KYC", kycSkipped ? "Skip for now — will complete later" : "To be submitted"],
-  ].filter(([, v]) => v);
+  ].filter((entry): entry is [string, string] => Boolean(entry[1]));
 
   return (
     <>

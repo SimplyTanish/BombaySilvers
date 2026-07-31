@@ -1,13 +1,8 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { useEffect, useState } from "react";
+import { useNavigate } from "@tanstack/react-router";
 import { AppShell, GlassCard, LiveDot, PageTitle } from "@/components/AppShell";
-import {
-  Area,
-  AreaChart,
-  ResponsiveContainer,
-  Tooltip,
-  XAxis,
-  YAxis,
-} from "recharts";
+import { Area, AreaChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import {
   ArrowUpRight,
   ArrowDownRight,
@@ -20,13 +15,19 @@ import {
   WifiOff,
 } from "lucide-react";
 import { useLiveRates } from "@/hooks/use-live-rates";
-import {
-  fmtINR,
-  fmtChange,
-  fmtPct,
-  generateSparkline,
-} from "@/lib/rates";
+import { fmtINR, fmtChange, fmtPct, generateSparkline } from "@/lib/rates";
 import type { MetalRate } from "@/lib/rates";
+import { supabase } from "@/lib/supabase";
+import { toast } from "sonner";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { DealerOrderDialog } from "@/components/DealerOrderDialog";
 
 export const Route = createFileRoute("/dashboard")({
   head: () => ({ meta: [{ title: "Dashboard · Bombay Silvers" }] }),
@@ -47,11 +48,13 @@ function timeAgo(epochMs: number): string {
 // ─── Dashboard ───────────────────────────────────────────────────────────────
 
 function Dashboard() {
-  const { data, isLoading, isError, error, isFetching, refetch, dataUpdatedAt } =
-    useLiveRates();
+  const navigate = useNavigate();
+  const { data, isLoading, isError, error, isFetching, refetch, dataUpdatedAt } = useLiveRates();
+  const [reserveOpen, setReserveOpen] = useState(false);
+  const [alertOpen, setAlertOpen] = useState(false);
+  const [orderOpen, setOrderOpen] = useState(false);
 
-  const isApiKeyMissing =
-    isError && (error?.message ?? "").includes("GOLDAPI_KEY_MISSING");
+  const isApiKeyMissing = isError && (error?.message ?? "").includes("GOLDAPI_KEY_MISSING");
 
   return (
     <AppShell>
@@ -76,10 +79,16 @@ function Dashboard() {
               <RefreshCw className={`h-4 w-4 ${isFetching ? "animate-spin" : ""}`} />
               Refresh
             </button>
-            <button className="hidden sm:inline-flex h-9 items-center gap-2 rounded-xl border border-border/70 bg-[var(--surface-2)] px-3 text-sm hover:bg-[var(--surface-3)]">
+            <button
+              onClick={() => setAlertOpen(true)}
+              className="hidden sm:inline-flex h-9 items-center gap-2 rounded-xl border border-border/70 bg-[var(--surface-2)] px-3 text-sm hover:bg-[var(--surface-3)]"
+            >
               <Bell className="h-4 w-4" /> Alerts
             </button>
-            <button className="inline-flex h-9 items-center gap-2 rounded-xl bg-gradient-to-b from-[#f1f1f4] to-[#b6b7bb] px-4 text-sm font-medium text-black shadow-[inset_0_1px_0_rgba(255,255,255,0.7)]">
+            <button
+              onClick={() => setOrderOpen(true)}
+              className="inline-flex h-9 items-center gap-2 rounded-xl bg-gradient-to-b from-[#f1f1f4] to-[#b6b7bb] px-4 text-sm font-medium text-black shadow-[inset_0_1px_0_rgba(255,255,255,0.7)]"
+            >
               <Plus className="h-4 w-4" /> New order
             </button>
           </>
@@ -142,12 +151,8 @@ function Dashboard() {
               <div className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
                 Inventory value
               </div>
-              <div className="metallic-text mt-2 font-mono text-3xl font-semibold">
-                ₹4.82 Cr
-              </div>
-              <div className="mt-1 text-xs text-muted-foreground">
-                Across 4 warehouses
-              </div>
+              <div className="metallic-text mt-2 font-mono text-3xl font-semibold">₹4.82 Cr</div>
+              <div className="mt-1 text-xs text-muted-foreground">Across 4 warehouses</div>
             </div>
             <div className="grid h-12 w-12 place-items-center rounded-xl bg-[var(--surface-3)]">
               <Boxes className="h-6 w-6 text-[var(--platinum)]" />
@@ -188,6 +193,15 @@ function Dashboard() {
             ].map(({ i: Icon, l }) => (
               <button
                 key={l}
+                onClick={() => {
+                  if (l === "Place order") navigate({ to: "/orders" });
+                  if (l === "Reserve stock") setReserveOpen(true);
+                  if (l === "Pay ledger") {
+                    navigate({ to: "/ledger" });
+                    toast.info("Online ledger payments will be available in the next release.");
+                  }
+                  if (l === "Set rate alert") setAlertOpen(true);
+                }}
                 className="group flex flex-col items-start gap-3 rounded-xl border border-border/60 bg-[var(--surface-2)]/60 p-4 text-left transition-colors hover:bg-[var(--surface-3)]"
               >
                 <div className="grid h-9 w-9 place-items-center rounded-lg bg-[var(--surface-3)] transition-transform group-hover:-translate-y-0.5">
@@ -206,9 +220,7 @@ function Dashboard() {
               <div className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
                 Recent orders
               </div>
-              <div className="mt-1 text-sm text-muted-foreground">
-                Last 24 hours · 6 total
-              </div>
+              <div className="mt-1 text-sm text-muted-foreground">Last 24 hours · 6 total</div>
             </div>
             <button className="text-xs text-muted-foreground hover:text-foreground">
               View all →
@@ -221,14 +233,9 @@ function Dashboard() {
               ["#BS-24-11271", "Silver bars · 100 kg", "Approved", "₹89.42 L", "warn"],
               ["#BS-24-11268", "Gold 999 · 500 g", "Delivered", "₹36.07 L", "gain"],
             ].map(([id, item, status, amt, tone]) => (
-              <div
-                key={id}
-                className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-4 py-3"
-              >
+              <div key={id} className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-4 py-3">
                 <div className="min-w-0">
-                  <div className="truncate font-mono text-xs text-muted-foreground">
-                    {id}
-                  </div>
+                  <div className="truncate font-mono text-xs text-muted-foreground">{id}</div>
                   <div className="truncate text-sm">{item}</div>
                 </div>
                 <div className="flex items-center gap-4">
@@ -287,7 +294,294 @@ function Dashboard() {
           ))}
         </div>
       </GlassCard>
+
+      <ReserveStockDialog
+        open={reserveOpen}
+        onOpenChange={setReserveOpen}
+        onReserved={() => {
+          refetch();
+          window.location.reload();
+        }}
+      />
+      <RateAlertDialog open={alertOpen} onOpenChange={setAlertOpen} />
+      <DealerOrderDialog open={orderOpen} onOpenChange={setOrderOpen} />
     </AppShell>
+  );
+}
+
+type InventoryOption = {
+  id: string;
+  quantity_available: number;
+  products: { name: string; sku: string } | null;
+  warehouses: { name: string } | null;
+};
+
+function ReserveStockDialog({
+  open,
+  onOpenChange,
+  onReserved,
+}: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  onReserved: () => void;
+}) {
+  const [inventory, setInventory] = useState<InventoryOption[]>([]);
+  const [inventoryId, setInventoryId] = useState("");
+  const [quantity, setQuantity] = useState("");
+  const [remarks, setRemarks] = useState("");
+  const [loading, setLoading] = useState(false);
+  const selected = inventory.find((item) => item.id === inventoryId);
+
+  useEffect(() => {
+    if (!open) return;
+    setLoading(true);
+    supabase
+      .from("inventory")
+      .select("id, quantity_available, products(name, sku), warehouses(name)")
+      .gt("quantity_available", 0)
+      .order("updated_at", { ascending: false })
+      .then(({ data, error }) => {
+        if (error) toast.error("Unable to load available inventory.");
+        else setInventory((data ?? []) as unknown as InventoryOption[]);
+      })
+      .finally(() => setLoading(false));
+  }, [open]);
+
+  const submit = async (event: React.FormEvent) => {
+    event.preventDefault();
+    const requested = Number(quantity);
+    if (!inventoryId || !Number.isFinite(requested) || requested <= 0) {
+      toast.error("Select a product and enter a valid quantity.");
+      return;
+    }
+    if (selected && requested > selected.quantity_available) {
+      toast.error(`Only ${selected.quantity_available} units are available.`);
+      return;
+    }
+    setLoading(true);
+    const { error } = await supabase.rpc("reserve_inventory", {
+      p_inventory_id: inventoryId,
+      p_quantity: requested,
+      p_remarks: remarks || null,
+    });
+    setLoading(false);
+    if (error) {
+      toast.error(error.message);
+      return;
+    }
+    toast.success("Stock reserved successfully.");
+    setInventoryId("");
+    setQuantity("");
+    setRemarks("");
+    onOpenChange(false);
+    onReserved();
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Reserve stock</DialogTitle>
+          <DialogDescription>
+            Reserve currently available inventory for your next order.
+          </DialogDescription>
+        </DialogHeader>
+        <form onSubmit={submit} className="grid gap-4">
+          <label className="grid gap-1.5 text-sm">
+            Product
+            <select
+              value={inventoryId}
+              onChange={(e) => setInventoryId(e.target.value)}
+              disabled={loading}
+              className="h-10 rounded-lg border border-border bg-[var(--surface-2)] px-3 text-sm"
+            >
+              <option value="">{loading ? "Loading inventory…" : "Select product"}</option>
+              {inventory.map((item) => (
+                <option key={item.id} value={item.id}>
+                  {item.products?.name ?? "Product"} · {item.warehouses?.name ?? "Warehouse"} (
+                  {item.quantity_available} available)
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="grid gap-1.5 text-sm">
+            Quantity
+            <input
+              value={quantity}
+              onChange={(e) => setQuantity(e.target.value)}
+              type="number"
+              min="0.0001"
+              step="any"
+              disabled={loading}
+              className="h-10 rounded-lg border border-border bg-[var(--surface-2)] px-3 text-sm"
+            />
+            {selected && (
+              <span className="text-xs text-muted-foreground">
+                {selected.quantity_available} units available
+              </span>
+            )}
+          </label>
+          <label className="grid gap-1.5 text-sm">
+            Remarks
+            <textarea
+              value={remarks}
+              onChange={(e) => setRemarks(e.target.value)}
+              disabled={loading}
+              rows={3}
+              className="rounded-lg border border-border bg-[var(--surface-2)] p-3 text-sm"
+            />
+          </label>
+          <DialogFooter>
+            <button
+              type="submit"
+              disabled={loading}
+              className="inline-flex h-9 items-center justify-center rounded-xl bg-gradient-to-b from-[#f1f1f4] to-[#b6b7bb] px-4 text-sm font-medium text-black disabled:opacity-50"
+            >
+              {loading ? "Reserving…" : "Reserve stock"}
+            </button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+type RateAlert = {
+  id: string;
+  metal_type: string;
+  above_price: number | null;
+  below_price: number | null;
+};
+function RateAlertDialog({
+  open,
+  onOpenChange,
+}: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+}) {
+  const [metal, setMetal] = useState("gold");
+  const [above, setAbove] = useState("");
+  const [below, setBelow] = useState("");
+  const [alerts, setAlerts] = useState<RateAlert[]>([]);
+  const [loading, setLoading] = useState(false);
+  const loadAlerts = async () => {
+    const { data, error } = await supabase
+      .from("rate_alerts")
+      .select("id, metal_type, above_price, below_price")
+      .eq("is_active", true)
+      .order("created_at", { ascending: false });
+    if (error) toast.error("Unable to load rate alerts.");
+    else setAlerts(data ?? []);
+  };
+  useEffect(() => {
+    if (open) void loadAlerts();
+  }, [open]);
+  const submit = async (event: React.FormEvent) => {
+    event.preventDefault();
+    const abovePrice = above ? Number(above) : null;
+    const belowPrice = below ? Number(below) : null;
+    if (
+      (!abovePrice && !belowPrice) ||
+      (abovePrice !== null && abovePrice <= 0) ||
+      (belowPrice !== null && belowPrice <= 0)
+    ) {
+      toast.error("Enter at least one valid price threshold.");
+      return;
+    }
+    setLoading(true);
+    const { data: auth } = await supabase.auth.getUser();
+    if (!auth.user) {
+      setLoading(false);
+      toast.error("Please sign in again to set an alert.");
+      return;
+    }
+    const { error } = await supabase.from("rate_alerts").insert({
+      user_id: auth.user.id,
+      metal_type: metal,
+      above_price: abovePrice,
+      below_price: belowPrice,
+    });
+    setLoading(false);
+    if (error) {
+      toast.error(error.message);
+      return;
+    }
+    toast.success("Rate alert saved.");
+    setAbove("");
+    setBelow("");
+    void loadAlerts();
+  };
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Set rate alert</DialogTitle>
+          <DialogDescription>
+            Get notified when the selected metal reaches your threshold.
+          </DialogDescription>
+        </DialogHeader>
+        <form onSubmit={submit} className="grid gap-4">
+          <label className="grid gap-1.5 text-sm">
+            Metal
+            <select
+              value={metal}
+              onChange={(e) => setMetal(e.target.value)}
+              className="h-10 rounded-lg border border-border bg-[var(--surface-2)] px-3 text-sm"
+            >
+              <option value="gold">Gold</option>
+              <option value="silver">Silver</option>
+              <option value="platinum">Platinum</option>
+              <option value="palladium">Palladium</option>
+            </select>
+          </label>
+          <div className="grid grid-cols-2 gap-3">
+            <label className="grid gap-1.5 text-sm">
+              Above price
+              <input
+                value={above}
+                onChange={(e) => setAbove(e.target.value)}
+                type="number"
+                min="0"
+                step="any"
+                className="h-10 rounded-lg border border-border bg-[var(--surface-2)] px-3 text-sm"
+              />
+            </label>
+            <label className="grid gap-1.5 text-sm">
+              Below price
+              <input
+                value={below}
+                onChange={(e) => setBelow(e.target.value)}
+                type="number"
+                min="0"
+                step="any"
+                className="h-10 rounded-lg border border-border bg-[var(--surface-2)] px-3 text-sm"
+              />
+            </label>
+          </div>
+          {alerts.length > 0 && (
+            <div className="rounded-lg border border-border/60 bg-[var(--surface-2)]/60 p-3 text-xs">
+              <div className="mb-2 font-medium text-sm">Existing alerts</div>
+              {alerts.map((alert) => (
+                <div key={alert.id} className="py-1 capitalize">
+                  {alert.metal_type} · {alert.above_price ? `above ₹${alert.above_price}` : ""}
+                  {alert.above_price && alert.below_price ? " · " : ""}
+                  {alert.below_price ? `below ₹${alert.below_price}` : ""}
+                </div>
+              ))}
+            </div>
+          )}
+          <DialogFooter>
+            <button
+              type="submit"
+              disabled={loading}
+              className="inline-flex h-9 items-center justify-center rounded-xl bg-gradient-to-b from-[#f1f1f4] to-[#b6b7bb] px-4 text-sm font-medium text-black disabled:opacity-50"
+            >
+              {loading ? "Saving…" : "Save alert"}
+            </button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
   );
 }
 
@@ -325,9 +619,7 @@ function RateCard({
   const delta = rate ? fmtChange(rate.changeAbs) : "—";
   const pct = rate ? fmtPct(rate.changePct) : "—";
   const up = rate ? rate.up : true;
-  const series = rate
-    ? generateSparkline(rate.prevINR, rate.priceINR)
-    : fallbackSeries;
+  const series = rate ? generateSparkline(rate.prevINR, rate.priceINR) : fallbackSeries;
 
   const color = up ? "var(--gain)" : "var(--loss)";
 
@@ -350,13 +642,9 @@ function RateCard({
               <div className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
                 {label}
               </div>
-              {isError && (
-                <span className="text-[10px] text-[var(--loss)]">· stale</span>
-              )}
+              {isError && <span className="text-[10px] text-[var(--loss)]">· stale</span>}
             </div>
-            <div className="metallic-text mt-2 font-mono text-3xl font-semibold">
-              ₹{price}
-            </div>
+            <div className="metallic-text mt-2 font-mono text-3xl font-semibold">₹{price}</div>
             <div className="mt-1 text-xs text-muted-foreground">{hint}</div>
           </div>
           {rate ? (

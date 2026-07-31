@@ -7,7 +7,6 @@ import {
   Receipt,
   Users2,
   Settings,
-  Bell,
   Search,
   Shield,
   Gift,
@@ -15,13 +14,11 @@ import {
   Menu,
   LogOut,
 } from "lucide-react";
+import { NotificationCenter } from "@/components/NotificationCenter";
 import { useAuth } from "@/hooks/use-auth";
 import { useLiveRates } from "@/hooks/use-live-rates";
 import { fmtINR, fmtChange } from "@/lib/rates";
-import {
-  Sheet,
-  SheetContent,
-} from "@/components/ui/sheet";
+import { Sheet, SheetContent } from "@/components/ui/sheet";
 
 const nav = [
   { to: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
@@ -46,8 +43,12 @@ export function BrandMark({ compact = false }: { compact?: boolean }) {
       </div>
       {!compact && (
         <div className="min-w-0 leading-tight">
-          <div className="metallic-text text-[15px] font-semibold tracking-tight">Bombay Silvers</div>
-          <div className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground">Dealer Terminal · Est. 1984</div>
+          <div className="metallic-text text-[15px] font-semibold tracking-tight">
+            Bombay Silvers
+          </div>
+          <div className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
+            Dealer Terminal · Est. 1984
+          </div>
         </div>
       )}
     </div>
@@ -58,22 +59,22 @@ export function RateTicker() {
   // Pull live gold & silver into the ticker; the rest stay static.
   const { data } = useLiveRates();
 
-  const goldPrice  = data ? fmtINR(data.gold.priceINR)     : "—";
-  const goldDelta  = data ? fmtChange(data.gold.changeAbs)  : "—";
-  const goldUp     = data ? data.gold.up                    : true;
+  const goldPrice = data ? fmtINR(data.gold.priceINR) : "—";
+  const goldDelta = data ? fmtChange(data.gold.changeAbs) : "—";
+  const goldUp = data ? data.gold.up : true;
 
-  const silverPrice = data ? fmtINR(data.silver.priceINR)    : "—";
+  const silverPrice = data ? fmtINR(data.silver.priceINR) : "—";
   const silverDelta = data ? fmtChange(data.silver.changeAbs) : "—";
-  const silverUp    = data ? data.silver.up                   : false;
+  const silverUp = data ? data.silver.up : false;
 
   const items = [
-    { s: "GOLD 999",   p: goldPrice,   d: goldDelta,  up: goldUp,    prefix: "₹" },
-    { s: "GOLD 995",   p: "71,860",    d: "+310",     up: true,      prefix: "₹" },
+    { s: "GOLD 999", p: goldPrice, d: goldDelta, up: goldUp, prefix: "₹" },
+    { s: "GOLD 995", p: "71,860", d: "+310", up: true, prefix: "₹" },
     { s: "SILVER 999", p: silverPrice, d: silverDelta, up: silverUp, prefix: "₹" },
-    { s: "PLATINUM",   p: "31,200",    d: "+18",      up: true,      prefix: "₹" },
-    { s: "MCX GOLD",   p: "72,205",    d: "+289",     up: true,      prefix: "₹" },
-    { s: "USD/INR",    p: "83.42",     d: "-0.06",    up: false,     prefix: ""  },
-    { s: "LBMA AM",    p: "2,342",     d: "+8.20",    up: true,      prefix: "$" },
+    { s: "PLATINUM", p: "31,200", d: "+18", up: true, prefix: "₹" },
+    { s: "MCX GOLD", p: "72,205", d: "+289", up: true, prefix: "₹" },
+    { s: "USD/INR", p: "83.42", d: "-0.06", up: false, prefix: "" },
+    { s: "LBMA AM", p: "2,342", d: "+8.20", up: true, prefix: "$" },
   ];
 
   const row = (key: string) => (
@@ -81,10 +82,11 @@ export function RateTicker() {
       {items.map((i, idx) => (
         <div key={idx} className="flex items-center gap-2">
           <span className="text-muted-foreground">{i.s}</span>
-          <span className="text-foreground">{i.prefix}{i.p}</span>
-          <span style={{ color: i.up ? "var(--gain)" : "var(--loss)" }}>
-            {i.d}
+          <span className="text-foreground">
+            {i.prefix}
+            {i.p}
           </span>
+          <span style={{ color: i.up ? "var(--gain)" : "var(--loss)" }}>{i.d}</span>
         </div>
       ))}
     </div>
@@ -127,14 +129,16 @@ function SidebarNav({
 }) {
   const displayName = user?.phone
     ? user.phone.replace("+91", "+91 ").replace(/(\+91 )(\d{5})(\d{5})/, "$1$2 $3")
-    : user?.email ?? "Dealer";
+    : (user?.email ?? "Dealer");
 
   return (
     <div className="flex h-full flex-col gap-2 p-4">
       <div className="px-1 pb-4">
         <BrandMark />
       </div>
-      <div className="px-1 pb-2 text-[10px] uppercase tracking-[0.2em] text-muted-foreground">Trading</div>
+      <div className="px-1 pb-2 text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
+        Trading
+      </div>
       <nav className="flex flex-col gap-0.5">
         {nav.map(({ to, label, icon: Icon }) => {
           const active = pathname === to || pathname.startsWith(to + "/");
@@ -232,10 +236,7 @@ function Topbar({ onMenuClick }: { onMenuClick: () => void }) {
           />
         </div>
         <LiveDot label="Market Open" />
-        <button className="relative grid h-9 w-9 place-items-center rounded-lg border border-border/60 bg-[var(--surface-2)]">
-          <Bell className="h-4 w-4" />
-          <span className="absolute right-1.5 top-1.5 h-1.5 w-1.5 rounded-full bg-[var(--warn)]" />
-        </button>
+        <NotificationCenter />
       </div>
       <RateTicker />
     </div>
@@ -252,9 +253,17 @@ function BottomNav() {
           const active = pathname === to || pathname.startsWith(to + "/");
           return (
             <Link key={to} to={to} className="flex flex-1 flex-col items-center gap-1 py-1">
-              <Icon className={"h-5 w-5 " + (active ? "text-foreground" : "text-muted-foreground")} />
-              <span className={"text-[10px] " + (active ? "text-foreground" : "text-muted-foreground")}>{label}</span>
-              {active && <span className="h-0.5 w-6 rounded-full bg-gradient-to-r from-transparent via-[var(--platinum)] to-transparent" />}
+              <Icon
+                className={"h-5 w-5 " + (active ? "text-foreground" : "text-muted-foreground")}
+              />
+              <span
+                className={"text-[10px] " + (active ? "text-foreground" : "text-muted-foreground")}
+              >
+                {label}
+              </span>
+              {active && (
+                <span className="h-0.5 w-6 rounded-full bg-gradient-to-r from-transparent via-[var(--platinum)] to-transparent" />
+              )}
             </Link>
           );
         })}
@@ -264,15 +273,7 @@ function BottomNav() {
 }
 
 export function AppShell({ children }: { children: ReactNode }) {
-  const {
-    session,
-    user,
-    dbUser,
-    role,
-    dealer,
-    loading,
-    signOut,
-  } = useAuth();
+  const { session, user, dbUser, role, dealer, loading, signOut } = useAuth();
 
   console.log("Current Role:", role);
   console.log("Database User:", dbUser);
@@ -304,12 +305,7 @@ export function AppShell({ children }: { children: ReactNode }) {
       <div className="flex">
         {/* Desktop sidebar */}
         <aside className="hidden w-[248px] shrink-0 flex-col border-r border-border/60 bg-[var(--surface-1)]/60 lg:flex">
-          <SidebarNav
-            pathname={pathname}
-            user={user}
-            onSignOut={handleSignOut}
-            role={role}
-          />
+          <SidebarNav pathname={pathname} user={user} onSignOut={handleSignOut} role={role} />
         </aside>
 
         {/* Mobile sidebar — Sheet */}

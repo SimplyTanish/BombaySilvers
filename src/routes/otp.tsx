@@ -78,7 +78,15 @@ function OTP() {
         const raw = sessionStorage.getItem("dealer_draft");
         if (raw) {
           const draft = JSON.parse(raw) as Record<string, unknown>;
-          await saveDealerProfile({ data: draft });
+          const { data: userData } = await supabase.auth.getUser();
+          await saveDealerProfile({
+            data: {
+              ...draft,
+              user_id: userData.user?.id ?? "",
+              phone,
+              email,
+            },
+          });
           sessionStorage.removeItem("dealer_draft");
         }
         // Mark KYC as not started in user metadata

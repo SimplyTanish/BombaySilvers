@@ -22,7 +22,7 @@ interface Props {
 }
 
 export function KycGate({ feature, children }: Props) {
-  const { needsKyc, status } = useKycStatus();
+  const { needsKyc } = useKycStatus();
   const navigate = useNavigate();
 
   if (!needsKyc) return <>{children}</>;
@@ -46,26 +46,17 @@ export function KycGate({ feature, children }: Props) {
         <div>
           <div className="text-base font-semibold">KYC required to {feature}</div>
           <div className="mt-1.5 max-w-sm text-sm text-muted-foreground">
-            {status === "submitted"
-              ? "Your documents are under review. This feature will unlock once compliance approves your KYC."
-              : "Complete your KYC verification to unlock this feature. It only takes a few minutes."}
+            Complete your KYC verification to unlock this feature.
           </div>
         </div>
 
-        {status !== "submitted" && (
-          <button
-            onClick={() => navigate({ to: "/kyc" })}
-            className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-b from-[#f1f1f4] to-[#b6b7bb] px-5 py-2.5 text-sm font-medium text-black shadow-[inset_0_1px_0_rgba(255,255,255,0.7)]"
-          >
-            Complete KYC <ArrowRight className="h-4 w-4" />
-          </button>
-        )}
+        <button
+           onClick={() => navigate({ to: "/kyc" })}
+           className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-b from-[#f1f1f4] to-[#b6b7bb] px-5 py-2.5 text-sm font-medium text-black shadow-[inset_0_1px_0_rgba(255,255,255,0.7)]">
+          Complete KYC <ArrowRight className="h-4 w-4" />
+        </button>
 
-        {status === "submitted" && (
-          <span className="rounded-full border border-[var(--warn)]/30 bg-[var(--warn)]/10 px-3 py-1 text-xs text-[var(--warn)]">
-            Under review · typically 2 business days
-          </span>
-        )}
+        
       </div>
     </div>
   );

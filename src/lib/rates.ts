@@ -1,43 +1,28 @@
 /**
- * Live bullion rates via GoldAPI.io
+ * Live bullion rates via BullionLive Business API.
  *
- * All GoldAPI calls happen server-side so the API key never reaches the browser.
- * A module-level in-memory cache avoids hammering the API when multiple browser
- * tabs are open — every concurrent request within the TTL window is served from
- * cache and counts as a single API call.
- *
- * Default cache TTL: 5 minutes (288 calls/day).
- * GoldAPI paid plan: 500 req/day ($10/mo) — comfortably covers this.
- * Override via GOLDAPI_CACHE_TTL_MS env var.
+ * The public client keeps the same LiveRates contract; only this server-side
+ * adapter knows about BullionLive's transport and response formats.
  */
-
 import { createServerFn } from "@tanstack/react-start";
 
-// ─── Constants ────────────────────────────────────────────────────────────────
-const GRAMS_PER_TROY_OZ = 31.1035;
-const DEFAULT_CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
+const DEFAULT_CACHE_TTL_MS = 5 * 60 * 1000;
+const DEFAULT_BULLIONLIVE_URL = "https://bullionlive.app/api/price";
 
-// ─── Types ────────────────────────────────────────────────────────────────────
 export type MetalRate = {
-  /** Display price in INR (gold = per 10g, silver = per kg) */
   priceINR: number;
-  /** Previous close in same display unit */
   prevINR: number;
-  /** Absolute change in same display unit (may be negative) */
   changeAbs: number;
-  /** Percentage change (e.g. 0.43 means +0.43%) */
   changePct: number;
   up: boolean;
-  /** Raw price per gram in INR — used for inventory value calculations */
   pricePerGram: number;
-  /** Unix timestamp from the API */
   timestamp: number;
 };
 
 export type LiveRates = {
-  gold: MetalRate; // per 10g (MCX convention)
-  silver: MetalRate; // per kg (MCX convention)
-  fetchedAt: number; // server epoch ms
+  gold: MetalRate;
+  silver: MetalRate;
+  fetchedAt: number;
   fromCache: boolean;
 };
 
@@ -46,142 +31,199 @@ export type RatesError = {
   message: string;
 };
 
-// ─── Raw GoldAPI response shape ───────────────────────────────────────────────
-type GoldApiResponse = {
-  price: number; // INR per troy oz
-  prev_close_price: number;
-  ch: number; // change per troy oz
-  chp: number; // change %
-  price_gram_24k: number; // INR per gram (24k / 999 purity)
-  timestamp: number;
+type BullionLiveMetal = Record<string, unknown>;
+type BullionLiveResponse = Record<string, unknown> & {
+  metals?: Record<string, BullionLiveMetal>;
+  rates?: Record<string, BullionLiveMetal>;
+  data?: Record<string, unknown>;
 };
 
-// ─── Server-side cache ────────────────────────────────────────────────────────
-let _cache: { data: LiveRates; expiresAt: number } | null = null;
+let cache: { data: LiveRates; expiresAt: number } | null = null;
 
-// ─── Helpers ─────────────────────────────────────────────────────────────────
-async function callGoldApi(
-  metal: "XAU" | "XAG",
-  apiKey: string
-): Promise<GoldApiResponse> {
-  const res = await fetch(`https://www.goldapi.io/api/${metal}/INR`, {
-    headers: {
-      "x-access-token": apiKey,
-      "Content-Type": "application/json",
-    },
-    signal: AbortSignal.timeout(8_000),
-  });
-
-  if (!res.ok) {
-    const body = await res.text().catch(() => "");
-    throw Object.assign(new Error(`GoldAPI ${res.status}: ${body.slice(0, 120)}`), {
-      status: res.status,
-    });
+function asNumber(value: unknown): number | undefined {
+  if (typeof value === "number" && Number.isFinite(value)) return value;
+  if (typeof value === "string" && value.trim() !== "" && Number.isFinite(Number(value))) {
+    return Number(value);
   }
-
-  return res.json() as Promise<GoldApiResponse>;
+  return undefined;
 }
 
-function toMetalRate(raw: GoldApiResponse, displayMultiplier: number): MetalRate {
-  // All spot prices from GoldAPI are per troy oz; price_gram_24k is per gram.
-  const priceINR = Math.round(raw.price_gram_24k * displayMultiplier);
-  const prevGram = raw.prev_close_price / GRAMS_PER_TROY_OZ;
-  const prevINR = Math.round(prevGram * displayMultiplier);
+function pickNumber(source: BullionLiveMetal, names: string[]): number | undefined {
+  for (const name of names) {
+    const value = asNumber(source[name]);
+    if (value !== undefined) return value;
+  }
+  return undefined;
+}
+
+function timestampMs(value: unknown): number {
+  const numeric = asNumber(value);
+  if (numeric !== undefined) return numeric < 10_000_000_000 ? numeric * 1000 : numeric;
+  if (typeof value === "string") {
+    const parsed = Date.parse(value);
+    if (!Number.isNaN(parsed)) return parsed;
+  }
+  return Date.now();
+}
+
+function getMetal(payload: BullionLiveResponse, metal: "gold" | "silver"): BullionLiveMetal {
+  const candidates = [
+    payload.metals?.[metal],
+    payload.metals?.[metal === "gold" ? "XAU" : "XAG"],
+    payload.rates?.[metal],
+    payload.rates?.[metal === "gold" ? "XAU" : "XAG"],
+    payload.data?.[metal],
+  ];
+  const result = candidates.find(
+    (candidate): candidate is BullionLiveMetal =>
+      typeof candidate === "object" && candidate !== null && !Array.isArray(candidate),
+  );
+  if (!result) throw new Error(`BullionLive response does not include ${metal} pricing.`);
+  return result;
+}
+
+/**
+ * BullionLive Business can return its retail feed in INR/gram. Those values
+ * are intentionally used as-is. The other accepted fields cover the standard
+ * Business response aliases without falling back to a foreign-exchange rate.
+ */
+function toMetalRate(
+  raw: BullionLiveMetal,
+  displayMultiplier: number,
+  responseTimestamp: unknown,
+): MetalRate {
+  const pricePerGram = pickNumber(raw, [
+    "retailPriceInrPerGram",
+    "retail_price_inr_per_gram",
+    "priceInrPerGram",
+    "price_inr_per_gram",
+    "inrPerGram",
+    "inr_per_gram",
+    "priceINR",
+    "priceInr",
+    "price",
+  ]);
+  if (pricePerGram === undefined) {
+    throw new Error("BullionLive did not return INR retail pricing per gram.");
+  }
+
+  const previousPerGram = pickNumber(raw, [
+    "previousRetailPriceInrPerGram",
+    "previous_retail_price_inr_per_gram",
+    "prevPriceInrPerGram",
+    "prev_price_inr_per_gram",
+    "previousPriceInr",
+    "prevPriceInr",
+    "previous_price",
+    "prev_price",
+  ]);
+  const changePerGram = pickNumber(raw, [
+    "changeInrPerGram",
+    "change_inr_per_gram",
+    "changeInr",
+    "change",
+  ]);
+  const previous =
+    previousPerGram ?? (changePerGram === undefined ? pricePerGram : pricePerGram - changePerGram);
+  const priceINR = Math.round(pricePerGram * displayMultiplier);
+  const prevINR = Math.round(previous * displayMultiplier);
   const changeAbs = priceINR - prevINR;
-  const changePct = prevINR !== 0 ? (changeAbs / prevINR) * 100 : 0;
+  const suppliedPct = pickNumber(raw, ["changePercent", "change_percent", "changePct", "chp"]);
+  const changePct = suppliedPct ?? (prevINR === 0 ? 0 : (changeAbs / prevINR) * 100);
+
   return {
     priceINR,
     prevINR,
     changeAbs,
     changePct,
     up: changeAbs >= 0,
-    pricePerGram: raw.price_gram_24k,
-    timestamp: raw.timestamp,
+    pricePerGram,
+    timestamp: timestampMs(
+      raw.updatedAt ?? raw.updated_at ?? raw.timestamp ?? raw.ts ?? responseTimestamp,
+    ),
   };
 }
 
-// ─── Server function ──────────────────────────────────────────────────────────
+async function callBullionLive(apiKey: string): Promise<BullionLiveResponse> {
+  const baseUrl = process.env.BULLIONLIVE_API_URL ?? DEFAULT_BULLIONLIVE_URL;
+  const url = new URL(baseUrl);
+  // BullionLive's keyed feed accepts a key parameter; headers are sent too so
+  // Business accounts configured for bearer/x-api-key authentication work unchanged.
+  url.searchParams.set("key", apiKey);
+  const response = await fetch(url, {
+    headers: { Accept: "application/json", Authorization: `Bearer ${apiKey}`, "x-api-key": apiKey },
+    signal: AbortSignal.timeout(8_000),
+  });
+  if (!response.ok) {
+    const body = await response.text().catch(() => "");
+    throw Object.assign(new Error(`BullionLive ${response.status}: ${body.slice(0, 120)}`), {
+      status: response.status,
+    });
+  }
+  return response.json() as Promise<BullionLiveResponse>;
+}
+
 export const fetchLiveRates = createServerFn({ method: "GET" }).handler(
   async (): Promise<LiveRates> => {
-    const apiKey = process.env.GOLDAPI_KEY;
-
+    const apiKey = process.env.BULLIONLIVE_API_KEY;
     if (!apiKey) {
       throw new Error(
-        "GOLDAPI_KEY_MISSING: Add your GoldAPI.io key to Replit Secrets as GOLDAPI_KEY to enable live rates."
+        "BULLIONLIVE_API_KEY_MISSING: Add BULLIONLIVE_API_KEY to server environment variables to enable live rates.",
       );
     }
 
     const now = Date.now();
-    const cacheTtl = parseInt(
-      process.env.GOLDAPI_CACHE_TTL_MS ?? String(DEFAULT_CACHE_TTL_MS),
-      10
+    const parsedTtl = Number.parseInt(
+      process.env.BULLIONLIVE_CACHE_TTL_MS ?? String(DEFAULT_CACHE_TTL_MS),
+      10,
     );
+    const cacheTtl = Number.isFinite(parsedTtl) ? parsedTtl : DEFAULT_CACHE_TTL_MS;
+    if (cache && now < cache.expiresAt) return { ...cache.data, fromCache: true };
 
-    // Serve from cache if still fresh
-    if (_cache && now < _cache.expiresAt) {
-      return { ..._cache.data, fromCache: true };
-    }
-
-    const [gold, silver] = await Promise.all([
-      callGoldApi("XAU", apiKey), // gold
-      callGoldApi("XAG", apiKey), // silver
-    ]);
-
+    const payload = await callBullionLive(apiKey);
     const data: LiveRates = {
-      gold: toMetalRate(gold, 10), // display per 10g
-      silver: toMetalRate(silver, 1000), // display per kg
+      gold: toMetalRate(getMetal(payload, "gold"), 10, payload.updatedAt ?? payload.timestamp),
+      silver: toMetalRate(
+        getMetal(payload, "silver"),
+        1000,
+        payload.updatedAt ?? payload.timestamp,
+      ),
       fetchedAt: now,
       fromCache: false,
     };
-
-    _cache = { data, expiresAt: now + cacheTtl };
+    cache = { data, expiresAt: now + cacheTtl };
     return data;
-  }
+  },
 );
 
-// ─── Formatting helpers (shared between dashboard + ticker) ──────────────────
-
-/** Format a number using the Indian numbering system (e.g. 72148 → "72,148") */
 export function fmtINR(n: number): string {
   const s = Math.round(Math.abs(n)).toString();
   if (s.length <= 3) return s;
   const last3 = s.slice(-3);
   const rest = s.slice(0, -3);
-  const grouped = rest.replace(/\B(?=(\d{2})+(?!\d))/g, ",");
-  return grouped + "," + last3;
+  return rest.replace(/\B(?=(\d{2})+(?!\d))/g, ",") + "," + last3;
 }
 
-/** Format a signed change value: "+312" or "-145" */
 export function fmtChange(n: number): string {
   const abs = fmtINR(Math.abs(n));
   return n >= 0 ? `+${abs}` : `-${abs}`;
 }
 
-/** Format a percentage: "+0.43%" */
 export function fmtPct(n: number): string {
   const s = Math.abs(n).toFixed(2);
   return n >= 0 ? `+${s}%` : `-${s}%`;
 }
 
-/**
- * Generate a deterministic intraday sparkline series from yesterday's close to
- * today's current price. Uses sin-wave noise so the result is identical on
- * server and client (no Math.random → no SSR hydration mismatch).
- */
+/** Synthetic history is retained when a live historical endpoint is unavailable. */
 export function generateSparkline(
   prevClose: number,
   current: number,
-  points = 48
+  points = 48,
 ): { t: number; v: number }[] {
   return Array.from({ length: points }, (_, i) => {
     const progress = i / (points - 1);
-    // Ease-in-out curve so the price "opens" near prevClose and "arrives" at current
-    const ease =
-      progress < 0.5
-        ? 2 * progress * progress
-        : -1 + (4 - 2 * progress) * progress;
+    const ease = progress < 0.5 ? 2 * progress * progress : -1 + (4 - 2 * progress) * progress;
     const trend = prevClose + (current - prevClose) * ease;
-    // Deterministic noise: two overlapping sin waves scaled to ~20% of the move
     const amplitude = Math.abs(current - prevClose) * 0.25 + prevClose * 0.0003;
     const noise =
       Math.sin(i * 1.73 + prevClose * 0.0001) * amplitude * 0.6 +

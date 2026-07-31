@@ -2,6 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { AppShell, GlassCard, PageTitle } from "@/components/AppShell";
 import { Download, FileText, Search } from "lucide-react";
 import { KycGate } from "@/components/KycGate";
+import { downloadInvoicePdf } from "@/lib/invoice-pdf";
 
 export const Route = createFileRoute("/invoices")({
   head: () => ({ meta: [{ title: "Invoices · Bombay Silvers" }] }),
@@ -17,6 +18,26 @@ const invoices = [
 ];
 
 function Invoices() {
+  const download = async (invoice: (typeof invoices)[number]) => {
+    const amount = Number(invoice.amt.replace(/,/g, ""));
+    await downloadInvoicePdf({
+      invoiceNumber: invoice.id,
+      invoiceDate: invoice.date,
+      orderNumber: invoice.order,
+      dealer: {
+        name: "Mehta Bullion Traders",
+        gstin: "24AABCM1234K1ZP",
+        pan: "AABCM1234K",
+        address: "Bullion Market, Surat",
+        city: "Surat",
+        state: "Gujarat",
+      },
+      items: [{ name: invoice.item, quantity: 1, unitPrice: amount / 1.03, total: amount }],
+      subtotal: amount / 1.03,
+      gst: amount - amount / 1.03,
+      total: amount,
+    });
+  };
   return (
     <AppShell>
       <PageTitle
@@ -73,7 +94,7 @@ function Invoices() {
                   <span className={"rounded-full px-2.5 py-1 text-[11px] " + (i.status === "Paid" ? "bg-[var(--gain)]/10 text-[var(--gain)]" : "bg-[var(--warn)]/10 text-[var(--warn)]")}>{i.status}</span>
                 </td>
                 <td className="p-4 text-right">
-                  <button className="inline-flex items-center gap-1.5 rounded-lg border border-border/70 bg-[var(--surface-2)] px-3 py-1.5 text-xs hover:bg-[var(--surface-3)]">
+                  <button onClick={() => void download(i)} className="inline-flex items-center gap-1.5 rounded-lg border border-border/70 bg-[var(--surface-2)] px-3 py-1.5 text-xs hover:bg-[var(--surface-3)]">
                     <Download className="h-3.5 w-3.5" /> PDF
                   </button>
                 </td>
@@ -96,7 +117,7 @@ function Invoices() {
             <div className="mt-3 text-sm">{i.item}</div>
             <div className="mt-3 flex items-center justify-between">
               <span className="font-mono text-sm">₹{i.amt}</span>
-              <button className="inline-flex items-center gap-1.5 rounded-lg border border-border/70 bg-[var(--surface-2)] px-3 py-1.5 text-xs">
+              <button onClick={() => void download(i)} className="inline-flex items-center gap-1.5 rounded-lg border border-border/70 bg-[var(--surface-2)] px-3 py-1.5 text-xs">
                 <Download className="h-3.5 w-3.5" /> Download
               </button>
             </div>

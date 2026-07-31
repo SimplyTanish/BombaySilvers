@@ -11,6 +11,7 @@ import { useEffect, type ReactNode } from "react";
 
 import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
+import { Toaster } from "@/components/ui/sonner";
 
 function NotFoundComponent() {
   return (
@@ -78,11 +79,18 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
       { title: "Bombay Silvers — Dealer Terminal" },
-      { name: "description", content: "The operating system of the Bombay Silvers dealer network. A Bloomberg-terminal-class bullion platform for wholesalers, staff and admins." },
+      {
+        name: "description",
+        content:
+          "The operating system of the Bombay Silvers dealer network. A Bloomberg-terminal-class bullion platform for wholesalers, staff and admins.",
+      },
       { name: "author", content: "Bombay Silvers" },
       { name: "theme-color", content: "#1a1a1e" },
       { property: "og:title", content: "Bombay Silvers — Dealer Terminal" },
-      { property: "og:description", content: "A Bloomberg-terminal-class platform for a 40-year bullion wholesaler." },
+      {
+        property: "og:description",
+        content: "A Bloomberg-terminal-class platform for a 40-year bullion wholesaler.",
+      },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
     ],
@@ -124,6 +132,7 @@ function RootComponent() {
     <QueryClientProvider client={queryClient}>
       {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
       <Outlet />
+      <Toaster />
     </QueryClientProvider>
   );
 }
