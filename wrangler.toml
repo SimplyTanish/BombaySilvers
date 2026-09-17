@@ -14,5 +14,6 @@ rules = [
 
 # Non-secret runtime vars (secrets set via `wrangler secret put`)
 [vars]
-BULLIONLIVE_API_URL     = "https://bullionlive.app/api/price"
-BULLIONLIVE_CACHE_TTL_MS = "30000"
+MCX_CACHE_TTL_MS     = "30000"
+MCX_GOLD_DUTY_PCT    = "13"
+MCX_SILVER_DUTY_PCT  = "17"
