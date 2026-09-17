@@ -3,6 +3,7 @@ import { useMemo, useState } from "react";
 import { AppShell, GlassCard, PageTitle } from "@/components/AppShell";
 import { Download, FileText, Loader2, Search } from "lucide-react";
 import { KycGate } from "@/components/KycGate";
+import { supabase } from "@/lib/supabase";
 import { useInvoices, getInvoicePdfUrl, type Invoice } from "@/hooks/use-invoices";
 import { downloadInvoicePdf } from "@/lib/invoice-pdf";
 import { generateInvoicePdf } from "@/lib/invoice-gen";
@@ -49,7 +50,13 @@ function Invoices() {
       // 2. No PDF on file yet — ask the server to generate one from the
       //    live invoice + firm data, then open the signed URL.
       try {
-        const generated = await generateInvoicePdf({ data: { invoiceId: invoice.id } });
+        const {
+          data: { session },
+        } = await supabase.auth.getSession();
+        const generated = await generateInvoicePdf({
+          data: { invoiceId: invoice.id },
+          headers: { authorization: `Bearer ${session?.access_token ?? ""}` },
+        });
         if (generated.pdfUrl) {
           window.open(generated.pdfUrl, "_blank");
           await refetch();

@@ -1,4 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
+import { getRequestHeader } from "@tanstack/react-start/server";
 import { createAdminClient } from "@/lib/supabase";
 import { renderInvoicePdfBytes, type InvoicePdfData } from "@/lib/invoice-pdf";
 
@@ -43,9 +44,19 @@ export const generateInvoicePdf = createServerFn({ method: "POST" })
     }
 
     // Authorization: dealer may fetch only their own invoice; staff+ any.
-    const user = await admin.auth.getUser();
-    const callerId = user.data.user?.id;
-    if (!callerId) throw new Error("Unauthenticated");
+    // The browser forwards the caller's Supabase JWT as the Authorization
+    // header; read it from the incoming request so the service-role client can
+    // validate who is calling (we never persist the caller's session here).
+    const authHeader = getRequestHeader("authorization");
+    const callerToken = authHeader?.replace(/^Bearer\s+/i, "") ?? null;
+    if (!callerToken) {
+      throw new Error("Unauthenticated");
+    }
+    const { data: userData, error: userError } = await admin.auth.getUser(callerToken);
+    const callerId = userData.user?.id;
+    if (userError || !callerId) {
+      throw new Error("Unauthenticated");
+    }
     const { data: callerDealer } = await admin
       .from("dealers")
       .select("id, role:users!inner(role)")
