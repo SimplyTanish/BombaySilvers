@@ -83,7 +83,7 @@ CREATE TRIGGER trg_audit_logs_immutable
 -- that sets a session flag (app.bypass_dealer_field_lock = 'true').
 -- ---------------------------------------------------------------------------
 CREATE OR REPLACE FUNCTION public.protect_dealer_privileged_fields()
-RETURNS TRIGGER AS $
+RETURNS TRIGGER AS $$
 BEGIN
   -- Service role (and the Postgres superuser used by the Supabase SQL editor/migrations)
   -- bypasses the lock. Checking current_user is not spoofable by an application
@@ -191,7 +191,7 @@ CREATE TRIGGER trg_order_status_machine
 --      cross-column invariant.
 -- ---------------------------------------------------------------------------
 CREATE OR REPLACE FUNCTION public.check_inventory_quantities()
-RETURNS TRIGGER AS $
+RETURNS TRIGGER AS $$
 DECLARE
   old_total NUMERIC;
   new_total NUMERIC;
@@ -220,7 +220,7 @@ BEGIN
 
   RETURN NEW;
 END;
-$ LANGUAGE plpgsql SECURITY DEFINER;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
 
 CREATE TRIGGER trg_inventory_quantity_sanity
   BEFORE INSERT OR UPDATE ON public.inventory
