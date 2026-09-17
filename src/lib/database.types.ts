@@ -1039,6 +1039,54 @@ export type Database = {
       generate_invoice_number: { Args: never; Returns: string };
       generate_order_number: { Args: never; Returns: string };
       generate_referral_code: { Args: never; Returns: string };
+      adjust_inventory: {
+        Args: {
+          p_inventory_id: string;
+          p_quantity_delta: number;
+          p_reason: string;
+          p_note?: string | null;
+        };
+        Returns: {
+          id: string;
+          product_id: string;
+          warehouse_id: string;
+          quantity_available: number;
+          quantity_reserved: number;
+          rate_per_gram: number;
+          created_at: string;
+          updated_at: string;
+        };
+      };
+      reserve_inventory_for_order: { Args: { p_order_id: string }; Returns: undefined };
+      transition_order_status: {
+        Args: {
+          p_order_id: string;
+          p_new_status: Database["public"]["Enums"]["order_status"];
+          p_notes?: string | null;
+        };
+        Returns: {
+          id: string;
+          order_number: string;
+          dealer_id: string;
+          status: Database["public"]["Enums"]["order_status"];
+          grand_total: number;
+          subtotal: number;
+          total_gst: number;
+          delivery_name: string;
+          delivery_address: string;
+          delivery_city: string;
+          delivery_state: string;
+          delivery_pincode: string;
+          delivery_phone: string | null;
+          notes: string | null;
+          cancelled_reason: string | null;
+          dispatched_at: string | null;
+          delivered_at: string | null;
+          created_at: string;
+          updated_at: string;
+          deleted_at: string | null;
+        };
+      };
       get_my_dealer_id: { Args: never; Returns: string };
       get_my_dealer_snapshot: {
         Args: never;

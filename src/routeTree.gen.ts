@@ -23,6 +23,9 @@ import { Route as OtpRouteImport } from './routes/otp'
 import { Route as ReferralsRouteImport } from './routes/referrals'
 import { Route as SecurityRouteImport } from './routes/security'
 import { Route as SettingsRouteImport } from './routes/settings'
+import { Route as StaffDealersRouteImport } from './routes/staff.dealers'
+import { Route as StaffInventoryRouteImport } from './routes/staff.inventory'
+import { Route as StaffOrdersRouteImport } from './routes/staff.orders'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -94,6 +97,21 @@ const SettingsRoute = SettingsRouteImport.update({
   path: '/settings',
   getParentRoute: () => rootRouteImport,
 } as any)
+const StaffDealersRoute = StaffDealersRouteImport.update({
+  id: '/staff/dealers',
+  path: '/staff/dealers',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const StaffInventoryRoute = StaffInventoryRouteImport.update({
+  id: '/staff/inventory',
+  path: '/staff/inventory',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const StaffOrdersRoute = StaffOrdersRouteImport.update({
+  id: '/staff/orders',
+  path: '/staff/orders',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -110,6 +128,9 @@ export interface FileRoutesByFullPath {
   '/referrals': typeof ReferralsRoute
   '/security': typeof SecurityRoute
   '/settings': typeof SettingsRoute
+  '/staff/dealers': typeof StaffDealersRoute
+  '/staff/inventory': typeof StaffInventoryRoute
+  '/staff/orders': typeof StaffOrdersRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -126,6 +147,9 @@ export interface FileRoutesByTo {
   '/referrals': typeof ReferralsRoute
   '/security': typeof SecurityRoute
   '/settings': typeof SettingsRoute
+  '/staff/dealers': typeof StaffDealersRoute
+  '/staff/inventory': typeof StaffInventoryRoute
+  '/staff/orders': typeof StaffOrdersRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -143,6 +167,9 @@ export interface FileRoutesById {
   '/referrals': typeof ReferralsRoute
   '/security': typeof SecurityRoute
   '/settings': typeof SettingsRoute
+  '/staff/dealers': typeof StaffDealersRoute
+  '/staff/inventory': typeof StaffInventoryRoute
+  '/staff/orders': typeof StaffOrdersRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -161,6 +188,9 @@ export interface FileRouteTypes {
     | '/referrals'
     | '/security'
     | '/settings'
+    | '/staff/dealers'
+    | '/staff/inventory'
+    | '/staff/orders'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -177,6 +207,9 @@ export interface FileRouteTypes {
     | '/referrals'
     | '/security'
     | '/settings'
+    | '/staff/dealers'
+    | '/staff/inventory'
+    | '/staff/orders'
   id:
     | '__root__'
     | '/'
@@ -193,6 +226,9 @@ export interface FileRouteTypes {
     | '/referrals'
     | '/security'
     | '/settings'
+    | '/staff/dealers'
+    | '/staff/inventory'
+    | '/staff/orders'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -210,6 +246,9 @@ export interface RootRouteChildren {
   ReferralsRoute: typeof ReferralsRoute
   SecurityRoute: typeof SecurityRoute
   SettingsRoute: typeof SettingsRoute
+  StaffDealersRoute: typeof StaffDealersRoute
+  StaffInventoryRoute: typeof StaffInventoryRoute
+  StaffOrdersRoute: typeof StaffOrdersRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -312,6 +351,27 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof SettingsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/staff/dealers': {
+      id: '/staff/dealers'
+      path: '/staff/dealers'
+      fullPath: '/staff/dealers'
+      preLoaderRoute: typeof StaffDealersRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/staff/inventory': {
+      id: '/staff/inventory'
+      path: '/staff/inventory'
+      fullPath: '/staff/inventory'
+      preLoaderRoute: typeof StaffInventoryRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/staff/orders': {
+      id: '/staff/orders'
+      path: '/staff/orders'
+      fullPath: '/staff/orders'
+      preLoaderRoute: typeof StaffOrdersRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -330,6 +390,9 @@ const rootRouteChildren: RootRouteChildren = {
   ReferralsRoute: ReferralsRoute,
   SecurityRoute: SecurityRoute,
   SettingsRoute: SettingsRoute,
+  StaffDealersRoute: StaffDealersRoute,
+  StaffInventoryRoute: StaffInventoryRoute,
+  StaffOrdersRoute: StaffOrdersRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

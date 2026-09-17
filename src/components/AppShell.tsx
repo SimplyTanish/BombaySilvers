@@ -13,6 +13,9 @@ import {
   LineChart,
   Menu,
   LogOut,
+  ClipboardCheck,
+  Warehouse,
+  ContactRound,
 } from "lucide-react";
 import { NotificationCenter } from "@/components/NotificationCenter";
 import { useAuth } from "@/hooks/use-auth";
@@ -33,6 +36,12 @@ const adminNav = [
   { to: "/admin", label: "Admin", icon: Users2 },
   { to: "/security", label: "Security", icon: Shield },
   { to: "/settings", label: "Settings", icon: Settings },
+] as const;
+
+const staffNav = [
+  { to: "/staff/orders", label: "Order queue", icon: ClipboardCheck },
+  { to: "/staff/inventory", label: "Stock control", icon: Warehouse },
+  { to: "/staff/dealers", label: "Dealer lookup", icon: ContactRound },
 ] as const;
 
 export function BrandMark({ compact = false }: { compact?: boolean }) {
@@ -160,6 +169,36 @@ function SidebarNav({
           );
         })}
       </nav>
+      {(role === "staff" || role === "admin" || role === "super_admin") && (
+        <>
+          <div className="mt-4 px-1 pb-2 text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
+            Operations
+          </div>
+
+          <nav className="flex flex-col gap-0.5">
+            {staffNav.map(({ to, label, icon: Icon }) => {
+              const active = pathname === to;
+
+              return (
+                <Link
+                  key={to}
+                  to={to}
+                  onClick={onNav}
+                  className={
+                    "flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors " +
+                    (active
+                      ? "bg-[var(--surface-3)] text-foreground"
+                      : "text-muted-foreground hover:bg-[var(--surface-2)] hover:text-foreground")
+                  }
+                >
+                  <Icon className="h-4 w-4" />
+                  <span>{label}</span>
+                </Link>
+              );
+            })}
+          </nav>
+        </>
+      )}
       {(role === "admin" || role === "super_admin") && (
         <>
           <div className="mt-4 px-1 pb-2 text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
