@@ -35,7 +35,7 @@ export function DealerOrderDialog({
   onCreated?: () => void;
 }) {
   const [inventory, setInventory] = useState<InventoryProduct[]>([]);
-  const [metal, setMetal] = useState<InventoryProduct["products"]["metal_type"]>("gold");
+  const [metal, setMetal] = useState<NonNullable<InventoryProduct["products"]>["metal_type"]>("gold");
   const [inventoryId, setInventoryId] = useState("");
   const [quantity, setQuantity] = useState("");
   const [rateType, setRateType] = useState("live");
@@ -45,17 +45,21 @@ export function DealerOrderDialog({
   useEffect(() => {
     if (!open) return;
     setLoading(true);
-    supabase
-      .from("inventory")
-      .select(
-        "id, warehouse_id, quantity_available, rate_per_gram, products(id, name, metal_type, purity, unit, unit_weight_grams)",
-      )
-      .gt("quantity_available", 0)
-      .then(({ data, error }) => {
+    const load = async () => {
+      try {
+        const { data, error } = await supabase
+          .from("inventory")
+          .select(
+            "id, warehouse_id, quantity_available, rate_per_gram, products(id, name, metal_type, purity, unit, unit_weight_grams)",
+          )
+          .gt("quantity_available", 0);
         if (error) toast.error("Unable to load products for ordering.");
         else setInventory((data ?? []) as unknown as InventoryProduct[]);
-      })
-      .finally(() => setLoading(false));
+      } finally {
+        setLoading(false);
+      }
+    };
+    void load();
   }, [open]);
 
   const products = useMemo(

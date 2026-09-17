@@ -335,16 +335,20 @@ function ReserveStockDialog({
   useEffect(() => {
     if (!open) return;
     setLoading(true);
-    supabase
-      .from("inventory")
-      .select("id, quantity_available, products(name, sku), warehouses(name)")
-      .gt("quantity_available", 0)
-      .order("updated_at", { ascending: false })
-      .then(({ data, error }) => {
+    const load = async () => {
+      try {
+        const { data, error } = await supabase
+          .from("inventory")
+          .select("id, quantity_available, products(name, sku), warehouses(name)")
+          .gt("quantity_available", 0)
+          .order("updated_at", { ascending: false });
         if (error) toast.error("Unable to load available inventory.");
         else setInventory((data ?? []) as unknown as InventoryOption[]);
-      })
-      .finally(() => setLoading(false));
+      } finally {
+        setLoading(false);
+      }
+    };
+    void load();
   }, [open]);
 
   const submit = async (event: React.FormEvent) => {
@@ -446,9 +450,11 @@ function ReserveStockDialog({
   );
 }
 
+type MetalType = "gold" | "silver" | "platinum" | "palladium";
+
 type RateAlert = {
   id: string;
-  metal_type: string;
+  metal_type: MetalType;
   above_price: number | null;
   below_price: number | null;
 };
@@ -459,7 +465,7 @@ function RateAlertDialog({
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }) {
-  const [metal, setMetal] = useState("gold");
+  const [metal, setMetal] = useState<MetalType>("gold");
   const [above, setAbove] = useState("");
   const [below, setBelow] = useState("");
   const [alerts, setAlerts] = useState<RateAlert[]>([]);
@@ -525,7 +531,7 @@ function RateAlertDialog({
             Metal
             <select
               value={metal}
-              onChange={(e) => setMetal(e.target.value)}
+              onChange={(e) => setMetal(e.target.value as MetalType)}
               className="h-10 rounded-lg border border-border bg-[var(--surface-2)] px-3 text-sm"
             >
               <option value="gold">Gold</option>

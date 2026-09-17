@@ -782,6 +782,53 @@ export type Database = {
         };
         Relationships: [];
       };
+      published_rates: {
+        Row: {
+          buy_rate: number;
+          currency_code: string;
+          id: string;
+          label: string;
+          metal: Database["public"]["Enums"]["metal_type"];
+          published_at: string;
+          published_by: string | null;
+          purity: number;
+          sell_rate: number;
+          unit: string;
+        };
+        Insert: {
+          buy_rate: number;
+          currency_code?: string;
+          id?: string;
+          label: string;
+          metal: Database["public"]["Enums"]["metal_type"];
+          published_at?: string;
+          published_by?: string | null;
+          purity?: number;
+          sell_rate: number;
+          unit?: string;
+        };
+        Update: {
+          buy_rate?: number;
+          currency_code?: string;
+          id?: string;
+          label?: string;
+          metal?: Database["public"]["Enums"]["metal_type"];
+          published_at?: string;
+          published_by?: string | null;
+          purity?: number;
+          sell_rate?: number;
+          unit?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "published_rates_currency_code_fkey";
+            columns: ["currency_code"];
+            isOneToOne: false;
+            referencedRelation: "currencies";
+            referencedColumns: ["code"];
+          },
+        ];
+      };
       referrals: {
         Row: {
           commission_amount: number | null;
@@ -969,7 +1016,19 @@ export type Database = {
       };
     };
     Views: {
-      [_ in never]: never;
+      latest_rates: {
+        Row: {
+          buy_rate: number;
+          currency_code: string;
+          label: string;
+          metal: Database["public"]["Enums"]["metal_type"];
+          published_at: string;
+          purity: number;
+          sell_rate: number;
+          unit: string;
+        };
+        Relationships: [];
+      };
     };
     Functions: {
       generate_dealer_code: { Args: { city: string }; Returns: string };

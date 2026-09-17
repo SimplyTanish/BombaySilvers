@@ -8,19 +8,34 @@
 import { useState, useEffect } from "react";
 import type { Session, User } from "@supabase/supabase-js";
 import { supabase } from "@/lib/supabase";
+import type { Database } from "@/lib/database.types";
 
-export function useAuth() {
+type DbUser = Database["public"]["Tables"]["users"]["Row"];
+type Dealer = Database["public"]["Tables"]["dealers"]["Row"];
+export type UserRole = DbUser["role"];
+
+export interface UseAuthResult {
+  session: Session | null;
+  user: User | null;
+  dbUser: DbUser | null;
+  role: UserRole | null;
+  dealer: Dealer | null;
+  loading: boolean;
+  signOut: () => Promise<void>;
+}
+
+export function useAuth(): UseAuthResult {
   const [session, setSession] = useState<Session | null>(null);
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
-  const [dbUser, setDbUser] = useState<any>(null);
-  const [role, setRole] = useState<string | null>(null);
-  const [dealer, setDealer] = useState<any>(null);
+  const [dbUser, setDbUser] = useState<DbUser | null>(null);
+  const [role, setRole] = useState<UserRole | null>(null);
+  const [dealer, setDealer] = useState<Dealer | null>(null);
 
   const loadUserData = async (userId: string) => {
     const { data: userData, error } = await supabase
       .from("users")
-      .select("id, email, role")
+      .select("id, email, role, full_name, phone, avatar_url, is_active, deleted_at, last_sign_in, created_at, updated_at")
       .eq("id", userId)
       .single();
 
@@ -30,7 +45,7 @@ export function useAuth() {
     }
 
     setDbUser(userData);
-    setRole((userData as any).role);
+    setRole(userData.role);
 
     const { data: dealerData } = await supabase
       .from("dealers")
@@ -73,7 +88,7 @@ export function useAuth() {
     return () => subscription.unsubscribe();
   }, []);
 
-  const signOut = () => supabase.auth.signOut();
+  const signOut = () => supabase.auth.signOut().then(() => undefined);
 
   return {
     session,

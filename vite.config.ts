@@ -5,6 +5,7 @@
 //     error logger plugins, and sandbox detection (port/host/strictPort).
 // You can pass additional config via defineConfig({ vite: { ... }, etc... }) if needed.
 import { defineConfig } from "@lovable.dev/vite-tanstack-config";
+import { VitePWA } from "vite-plugin-pwa";
 
 export default defineConfig({
   tanstackStart: {
@@ -24,5 +25,75 @@ export default defineConfig({
       strictPort: true,
       allowedHosts: true,
     },
+    plugins: [
+      VitePWA({
+        registerType: "autoUpdate",
+        injectRegister: false,
+        outDir: ".output/public",
+        includeAssets: ["favicon.ico"],
+        manifest: {
+          name: "Bombay Silvers — Dealer Terminal",
+          short_name: "BombaySilvers",
+          description:
+            "The operating system of the Bombay Silvers dealer network. Bullion rates, inventory, orders, invoices and ledger.",
+          theme_color: "#101012",
+          background_color: "#101012",
+          display: "standalone",
+          orientation: "portrait",
+          start_url: "/",
+          scope: "/",
+          lang: "en",
+          categories: ["business", "finance", "shopping"],
+          icons: [
+            {
+              src: "/icons/pwa-192x192.png",
+              sizes: "192x192",
+              type: "image/png",
+            },
+            {
+              src: "/icons/pwa-512x512.png",
+              sizes: "512x512",
+              type: "image/png",
+            },
+            {
+              src: "/icons/pwa-512x512.png",
+              sizes: "512x512",
+              type: "image/png",
+              purpose: "any maskable",
+            },
+          ],
+        },
+        workbox: {
+          globPatterns: ["**/*.{js,css,html,ico,png,svg,woff2}"],
+          cleanupOutdatedCaches: true,
+          clientsClaim: true,
+          skipWaiting: true,
+          navigateFallback: "/",
+          runtimeCaching: [
+            {
+              urlPattern: /^https:\/\/.*\.supabase\.co\/auth\/v1\//,
+              handler: "NetworkOnly",
+            },
+            {
+              urlPattern: /^https:\/\/.*\.supabase\.co\/rest\/v1\//,
+              handler: "NetworkOnly",
+            },
+            {
+              urlPattern: /^https:\/\/.*\.supabase\.co\/storage\/v1\//,
+              handler: "NetworkFirst",
+              options: {
+                cacheName: "supabase-storage",
+                expiration: { maxEntries: 64, maxAgeSeconds: 60 * 60 * 24 },
+              },
+            },
+          ],
+        },
+        devOptions: {
+          enabled: true,
+          type: "module",
+          navigateFallback: "/",
+        },
+      }),
+    ],
   },
 });
