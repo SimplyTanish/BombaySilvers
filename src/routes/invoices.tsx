@@ -77,7 +77,14 @@ function Invoices() {
           city: null,
           state: null,
         },
-        items: [{ name: "Delivery against order", quantity: 1, unitPrice: invoice.grand_total, total: invoice.grand_total }],
+        items: [
+          {
+            name: "Delivery against order",
+            quantity: 1,
+            unitPrice: invoice.grand_total,
+            total: invoice.grand_total,
+          },
+        ],
         subtotal: invoice.subtotal,
         gst: invoice.total_gst,
         total: invoice.grand_total,
@@ -94,7 +101,9 @@ function Invoices() {
     <AppShell>
       <PageTitle
         title="Invoices"
-        subtitle={invoices ? `${invoices.length} invoices on file` : "GST-compliant · downloadable PDFs"}
+        subtitle={
+          invoices ? `${invoices.length} invoices on file` : "GST-compliant · downloadable PDFs"
+        }
       />
 
       <KycGate feature="download invoices">
@@ -139,7 +148,10 @@ function Invoices() {
                 </thead>
                 <tbody>
                   {filtered.map((i) => (
-                    <tr key={i.id} className="border-b border-border/40 last:border-0 hover:bg-[var(--surface-2)]/60">
+                    <tr
+                      key={i.id}
+                      className="border-b border-border/40 last:border-0 hover:bg-[var(--surface-2)]/60"
+                    >
                       <td className="p-4">
                         <div className="flex items-center gap-3">
                           <div className="grid h-8 w-8 place-items-center rounded-lg bg-[var(--surface-3)]">
@@ -152,12 +164,21 @@ function Invoices() {
                         {i.orders?.order_number ?? i.order_id.slice(0, 8).toUpperCase()}
                       </td>
                       <td className="p-4 text-muted-foreground">
-                        {new Intl.DateTimeFormat("en-IN", { day: "2-digit", month: "short", year: "numeric" }).format(new Date(i.invoice_date))}
+                        {new Intl.DateTimeFormat("en-IN", {
+                          day: "2-digit",
+                          month: "short",
+                          year: "numeric",
+                        }).format(new Date(i.invoice_date))}
                       </td>
                       <td className="p-4 text-right font-mono">{fmtINR(i.total_gst)}</td>
                       <td className="p-4 text-right font-mono">₹{fmtINR(i.grand_total)}</td>
                       <td className="p-4">
-                        <span className={(statusTone[i.status] ?? statusTone.draft) + " rounded-full px-2.5 py-1 text-[11px]"}>
+                        <span
+                          className={
+                            (statusTone[i.status] ?? statusTone.draft) +
+                            " rounded-full px-2.5 py-1 text-[11px]"
+                          }
+                        >
                           {statusLabel(i.status)}
                         </span>
                       </td>
@@ -167,7 +188,11 @@ function Invoices() {
                           disabled={downloadingId === i.id}
                           className="inline-flex items-center gap-1.5 rounded-lg border border-border/70 bg-[var(--surface-2)] px-3 py-1.5 text-xs hover:bg-[var(--surface-3)] disabled:opacity-50"
                         >
-                          {downloadingId === i.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Download className="h-3.5 w-3.5" />}
+                          {downloadingId === i.id ? (
+                            <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                          ) : (
+                            <Download className="h-3.5 w-3.5" />
+                          )}
                           PDF
                         </button>
                       </td>
@@ -184,10 +209,20 @@ function Invoices() {
                     <div>
                       <div className="font-mono text-sm">{i.invoice_number}</div>
                       <div className="text-xs text-muted-foreground">
-                        {new Intl.DateTimeFormat("en-IN", { day: "2-digit", month: "short", year: "numeric" }).format(new Date(i.invoice_date))} · {i.orders?.order_number ?? "—"}
+                        {new Intl.DateTimeFormat("en-IN", {
+                          day: "2-digit",
+                          month: "short",
+                          year: "numeric",
+                        }).format(new Date(i.invoice_date))}{" "}
+                        · {i.orders?.order_number ?? "—"}
                       </div>
                     </div>
-                    <span className={(statusTone[i.status] ?? statusTone.draft) + " rounded-full px-2.5 py-1 text-[11px]"}>
+                    <span
+                      className={
+                        (statusTone[i.status] ?? statusTone.draft) +
+                        " rounded-full px-2.5 py-1 text-[11px]"
+                      }
+                    >
                       {statusLabel(i.status)}
                     </span>
                   </div>
@@ -198,7 +233,11 @@ function Invoices() {
                       disabled={downloadingId === i.id}
                       className="inline-flex items-center gap-1.5 rounded-lg border border-border/70 bg-[var(--surface-2)] px-3 py-1.5 text-xs disabled:opacity-50"
                     >
-                      {downloadingId === i.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Download className="h-3.5 w-3.5" />}
+                      {downloadingId === i.id ? (
+                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                      ) : (
+                        <Download className="h-3.5 w-3.5" />
+                      )}
                       Download
                     </button>
                   </div>

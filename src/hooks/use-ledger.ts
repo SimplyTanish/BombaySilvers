@@ -74,15 +74,21 @@ export function useLedgerSummary() {
       const thirtyDaysAgo = Date.now() - 30 * 24 * 60 * 60 * 1000;
 
       const credits30d = entries
-        .filter((e) => e.entry_type === "credit" && new Date(e.created_at).getTime() >= thirtyDaysAgo)
+        .filter(
+          (e) => e.entry_type === "credit" && new Date(e.created_at).getTime() >= thirtyDaysAgo,
+        )
         .reduce((sum, e) => sum + e.amount, 0);
 
       const debits30d = entries
-        .filter((e) => e.entry_type === "debit" && new Date(e.created_at).getTime() >= thirtyDaysAgo)
+        .filter(
+          (e) => e.entry_type === "debit" && new Date(e.created_at).getTime() >= thirtyDaysAgo,
+        )
         .reduce((sum, e) => sum + e.amount, 0);
 
       const latest = entries[0];
-      const openingBalance = latest ? latest.balance_after + (latest.entry_type === "debit" ? latest.amount : -latest.amount) : 0;
+      const openingBalance = latest
+        ? latest.balance_after + (latest.entry_type === "debit" ? latest.amount : -latest.amount)
+        : 0;
 
       return {
         outstanding: dealer ? Math.max(0, -dealer.current_balance) : 0,

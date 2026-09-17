@@ -35,7 +35,8 @@ export function DealerOrderDialog({
   onCreated?: () => void;
 }) {
   const [inventory, setInventory] = useState<InventoryProduct[]>([]);
-  const [metal, setMetal] = useState<NonNullable<InventoryProduct["products"]>["metal_type"]>("gold");
+  const [metal, setMetal] =
+    useState<NonNullable<InventoryProduct["products"]>["metal_type"]>("gold");
   const [inventoryId, setInventoryId] = useState("");
   const [quantity, setQuantity] = useState("");
   const [rateType, setRateType] = useState("live");
@@ -139,10 +140,9 @@ export function DealerOrderDialog({
       });
       if (itemError) throw itemError;
 
-      const { data: invoice, error: invoiceError } = await supabase.rpc(
-        "generate_dealer_invoice",
-        { p_order_id: order.id },
-      );
+      const { data: invoice, error: invoiceError } = await supabase.rpc("generate_dealer_invoice", {
+        p_order_id: order.id,
+      });
       if (invoiceError || !invoice?.[0]) {
         throw invoiceError ?? new Error("Order created, but its invoice could not be generated.");
       }

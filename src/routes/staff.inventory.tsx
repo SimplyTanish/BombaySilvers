@@ -33,7 +33,8 @@ function StaffInventory() {
   }, [rows, query]);
 
   const totalValue = useMemo(
-    () => (rows ?? []).reduce((s, r) => s + Number(r.quantity_available) * Number(r.rate_per_gram), 0),
+    () =>
+      (rows ?? []).reduce((s, r) => s + Number(r.quantity_available) * Number(r.rate_per_gram), 0),
     [rows],
   );
 
@@ -70,7 +71,9 @@ function StaffInventory() {
             <>
               <div className="hidden text-right sm:block">
                 <div className="font-mono text-sm text-foreground">₹{fmtINR(totalValue)}</div>
-                <div className="text-[10px] uppercase tracking-widest text-muted-foreground">total value</div>
+                <div className="text-[10px] uppercase tracking-widest text-muted-foreground">
+                  total value
+                </div>
               </div>
               <LiveDot label="Live stock" />
             </>
@@ -126,7 +129,10 @@ function StaffInventory() {
                 </tr>
               )}
               {filtered.map((r) => (
-                <tr key={r.id} className="border-b border-border/40 last:border-0 hover:bg-[var(--surface-2)]/60">
+                <tr
+                  key={r.id}
+                  className="border-b border-border/40 last:border-0 hover:bg-[var(--surface-2)]/60"
+                >
                   <td className="p-4">
                     <div className="flex items-center gap-3">
                       <div className="grid h-8 w-8 place-items-center rounded-lg bg-[var(--surface-3)]">
@@ -134,7 +140,9 @@ function StaffInventory() {
                       </div>
                       <div>
                         <div>{r.product.name}</div>
-                        <div className="font-mono text-[11px] text-muted-foreground">{r.product.sku}</div>
+                        <div className="font-mono text-[11px] text-muted-foreground">
+                          {r.product.sku}
+                        </div>
                       </div>
                     </div>
                   </td>
@@ -142,7 +150,9 @@ function StaffInventory() {
                     {r.warehouse.name} · {r.warehouse.city}
                   </td>
                   <td className="p-4 text-right font-mono">{r.quantity_available}</td>
-                  <td className="p-4 text-right font-mono text-[var(--warn)]">{r.quantity_reserved}</td>
+                  <td className="p-4 text-right font-mono text-[var(--warn)]">
+                    {r.quantity_reserved}
+                  </td>
                   <td className="p-4 text-right font-mono">₹{fmtINR(r.rate_per_gram)}</td>
                   <td className="p-4 text-right">
                     {adjustById === r.id ? (

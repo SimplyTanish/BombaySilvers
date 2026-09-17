@@ -1,14 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
 import { AppShell, GlassCard, LiveDot, PageTitle } from "@/components/AppShell";
-import {
-  Line,
-  LineChart,
-  ResponsiveContainer,
-  Tooltip,
-  XAxis,
-  YAxis,
-} from "recharts";
+import { Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import {
   Users2,
   Boxes,
@@ -20,11 +13,7 @@ import {
   Send,
 } from "lucide-react";
 import { RequireRole } from "@/components/RequireRole";
-import {
-  useAdminAnalytics,
-  useAdminDealers,
-  useAdminAudit,
-} from "@/hooks/use-admin";
+import { useAdminAnalytics, useAdminDealers, useAdminAudit } from "@/hooks/use-admin";
 import {
   usePublishedRates,
   usePublishRates,
@@ -41,23 +30,37 @@ export const Route = createFileRoute("/admin")({
 const metalNames = ["gold", "silver", "platinum", "palladium"] as const;
 
 function Admin() {
-  const { data: analytics, isLoading: analyticsLoading, isError: analyticsError } = useAdminAnalytics();
+  const {
+    data: analytics,
+    isLoading: analyticsLoading,
+    isError: analyticsError,
+  } = useAdminAnalytics();
   const { data: dealers, isLoading: dealersLoading } = useAdminDealers();
   const { data: audit, isLoading: auditLoading } = useAdminAudit(15);
   const { data: rates } = usePublishedRates();
 
-  const rateSheet: Array<{ metal: PublishedRate["metal"]; label: string; buy: string; sell: string }> =
-    metalNames.map((m) => {
-      const current = rates?.find((r) => r.metal === m);
-      return {
-        metal: m,
-        label:
-          current?.label ??
-          (m === "gold" ? "Gold 24K" : m === "silver" ? "Silver 999" : m === "platinum" ? "Platinum" : "Palladium"),
-        buy: current?.buy_rate != null ? String(current.buy_rate) : "",
-        sell: current?.sell_rate != null ? String(current.sell_rate) : "",
-      };
-    });
+  const rateSheet: Array<{
+    metal: PublishedRate["metal"];
+    label: string;
+    buy: string;
+    sell: string;
+  }> = metalNames.map((m) => {
+    const current = rates?.find((r) => r.metal === m);
+    return {
+      metal: m,
+      label:
+        current?.label ??
+        (m === "gold"
+          ? "Gold 24K"
+          : m === "silver"
+            ? "Silver 999"
+            : m === "platinum"
+              ? "Platinum"
+              : "Palladium"),
+      buy: current?.buy_rate != null ? String(current.buy_rate) : "",
+      sell: current?.sell_rate != null ? String(current.sell_rate) : "",
+    };
+  });
 
   return (
     <RequireRole role={["admin", "super_admin"]}>
@@ -73,7 +76,11 @@ function Admin() {
             i={Users2}
             l="Active dealers"
             v={analytics ? String(analytics.activeDealers) : "—"}
-            d={analytics ? `of ${analytics.totalDealers} total · ${analytics.pendingKyc} in KYC` : "Loading"}
+            d={
+              analytics
+                ? `of ${analytics.totalDealers} total · ${analytics.pendingKyc} in KYC`
+                : "Loading"
+            }
             tone="gain"
           />
           <KPI
@@ -132,7 +139,10 @@ function Admin() {
                   </tr>
                 )}
                 {dealers?.map((d) => (
-                  <tr key={d.id} className="border-b border-border/40 last:border-0 hover:bg-[var(--surface-2)]/60">
+                  <tr
+                    key={d.id}
+                    className="border-b border-border/40 last:border-0 hover:bg-[var(--surface-2)]/60"
+                  >
                     <td className="p-3">
                       <div className="flex items-center gap-3">
                         <div className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-gradient-to-br from-[#d9d9dd] to-[#7a7b7f] font-mono text-[10px] font-bold text-black">
@@ -143,7 +153,9 @@ function Admin() {
                     </td>
                     <td className="p-3 font-mono text-xs text-muted-foreground">{d.dealer_code}</td>
                     <td className="p-3">{titleCase(d.tier)}</td>
-                    <td className={`p-3 text-right font-mono ${d.current_balance < 0 ? "text-[var(--loss)]" : "text-[var(--gain)]"}`}>
+                    <td
+                      className={`p-3 text-right font-mono ${d.current_balance < 0 ? "text-[var(--loss)]" : "text-[var(--gain)]"}`}
+                    >
                       ₹{fmtINR(-d.current_balance)}
                     </td>
                     <td className="p-3">
@@ -180,12 +192,24 @@ function Admin() {
                 <div className="p-3 text-xs text-muted-foreground">No audit entries yet.</div>
               )}
               {audit?.map((a) => (
-                <div key={a.id} className="rounded-lg border border-border/60 bg-[var(--surface-2)]/60 p-3 text-xs">
+                <div
+                  key={a.id}
+                  className="rounded-lg border border-border/60 bg-[var(--surface-2)]/60 p-3 text-xs"
+                >
                   <div className="flex items-center justify-between">
                     <span className="font-mono text-muted-foreground">
-                      {new Intl.DateTimeFormat("en-IN", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" }).format(new Date(a.created_at))}
+                      {new Intl.DateTimeFormat("en-IN", {
+                        day: "2-digit",
+                        month: "short",
+                        hour: "2-digit",
+                        minute: "2-digit",
+                      }).format(new Date(a.created_at))}
                     </span>
-                    {a.ip_address && <span className="font-mono text-[10px] text-muted-foreground">{a.ip_address}</span>}
+                    {a.ip_address && (
+                      <span className="font-mono text-[10px] text-muted-foreground">
+                        {a.ip_address}
+                      </span>
+                    )}
                   </div>
                   <div className="mt-1">{titleCase(a.action)}</div>
                   {a.entity_type && (
@@ -205,7 +229,10 @@ function Admin() {
 function RateHistoryCard() {
   const { data: rates } = usePublishedRates();
   const byMetal = (metal: PublishedRate["metal"]) =>
-    (rates ?? []).filter((r) => r.metal === metal).slice(0, 30).reverse();
+    (rates ?? [])
+      .filter((r) => r.metal === metal)
+      .slice(0, 30)
+      .reverse();
 
   const gold = byMetal("gold");
   const silver = byMetal("silver");
@@ -224,12 +251,26 @@ function RateHistoryCard() {
             Sell rate history · published
           </div>
           <div className="mt-1 text-sm text-muted-foreground">
-            {gold.length || silver.length ? `${gold.length || silver.length} publishes recorded` : "No publishes yet — use the rate control"}
+            {gold.length || silver.length
+              ? `${gold.length || silver.length} publishes recorded`
+              : "No publishes yet — use the rate control"}
           </div>
         </div>
         <div className="flex items-center gap-4 text-[11px] text-muted-foreground">
-          <span className="inline-flex items-center gap-1.5"><i className="inline-block h-2 w-2 rounded-full" style={{ background: "var(--gold)" }} /> Gold</span>
-          <span className="inline-flex items-center gap-1.5"><i className="inline-block h-2 w-2 rounded-full" style={{ background: "var(--platinum)" }} /> Silver</span>
+          <span className="inline-flex items-center gap-1.5">
+            <i
+              className="inline-block h-2 w-2 rounded-full"
+              style={{ background: "var(--gold)" }}
+            />{" "}
+            Gold
+          </span>
+          <span className="inline-flex items-center gap-1.5">
+            <i
+              className="inline-block h-2 w-2 rounded-full"
+              style={{ background: "var(--platinum)" }}
+            />{" "}
+            Silver
+          </span>
         </div>
       </div>
       <div className="mt-4 h-64">
@@ -240,11 +281,40 @@ function RateHistoryCard() {
         ) : (
           <ResponsiveContainer width="100%" height="100%">
             <LineChart data={series}>
-              <XAxis dataKey="d" tick={{ fill: "var(--muted-foreground)", fontSize: 10 }} axisLine={false} tickLine={false} />
-              <YAxis tick={{ fill: "var(--muted-foreground)", fontSize: 10 }} axisLine={false} tickLine={false} domain={["dataMin - 200", "dataMax + 200"]} />
-              <Tooltip contentStyle={{ background: "var(--surface-2)", border: "1px solid var(--border)", borderRadius: 8, fontSize: 11 }} />
-              <Line type="monotone" dataKey="gold" stroke="var(--gold)" strokeWidth={1.5} dot={false} />
-              <Line type="monotone" dataKey="silver" stroke="var(--platinum)" strokeWidth={1.5} dot={false} />
+              <XAxis
+                dataKey="d"
+                tick={{ fill: "var(--muted-foreground)", fontSize: 10 }}
+                axisLine={false}
+                tickLine={false}
+              />
+              <YAxis
+                tick={{ fill: "var(--muted-foreground)", fontSize: 10 }}
+                axisLine={false}
+                tickLine={false}
+                domain={["dataMin - 200", "dataMax + 200"]}
+              />
+              <Tooltip
+                contentStyle={{
+                  background: "var(--surface-2)",
+                  border: "1px solid var(--border)",
+                  borderRadius: 8,
+                  fontSize: 11,
+                }}
+              />
+              <Line
+                type="monotone"
+                dataKey="gold"
+                stroke="var(--gold)"
+                strokeWidth={1.5}
+                dot={false}
+              />
+              <Line
+                type="monotone"
+                dataKey="silver"
+                stroke="var(--platinum)"
+                strokeWidth={1.5}
+                dot={false}
+              />
             </LineChart>
           </ResponsiveContainer>
         )}
@@ -278,7 +348,15 @@ function RatePublishCard({
       buy_rate: Number(r.buy),
       sell_rate: Number(r.sell),
     }));
-    if (rows.some((r) => !Number.isFinite(r.buy_rate) || r.buy_rate <= 0 || !Number.isFinite(r.sell_rate) || r.sell_rate <= 0)) {
+    if (
+      rows.some(
+        (r) =>
+          !Number.isFinite(r.buy_rate) ||
+          r.buy_rate <= 0 ||
+          !Number.isFinite(r.sell_rate) ||
+          r.sell_rate <= 0,
+      )
+    ) {
       toast.error("Enter valid buy and sell rates (₹ per gram).");
       return;
     }
@@ -299,7 +377,9 @@ function RatePublishCard({
             <div className="text-xs font-medium text-foreground">{r.label}</div>
             <div className="flex items-center gap-2">
               <div className="relative flex-1">
-                <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[10px] text-muted-foreground">Buy ₹</span>
+                <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[10px] text-muted-foreground">
+                  Buy ₹
+                </span>
                 <input
                   defaultValue={r.buy}
                   onChange={(e) => setField(r.metal, "buy", e.target.value)}
@@ -308,7 +388,9 @@ function RatePublishCard({
                 />
               </div>
               <div className="relative flex-1">
-                <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[10px] text-muted-foreground">Sell ₹</span>
+                <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[10px] text-muted-foreground">
+                  Sell ₹
+                </span>
                 <input
                   defaultValue={r.sell}
                   onChange={(e) => setField(r.metal, "sell", e.target.value)}
@@ -325,7 +407,11 @@ function RatePublishCard({
         disabled={publish.isPending}
         className="mt-5 flex h-11 w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-b from-[#f1f1f4] to-[#b6b7bb] text-sm font-medium text-black shadow-[inset_0_1px_0_rgba(255,255,255,0.7)] disabled:opacity-50"
       >
-        {publish.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+        {publish.isPending ? (
+          <Loader2 className="h-4 w-4 animate-spin" />
+        ) : (
+          <Send className="h-4 w-4" />
+        )}
         Publish to dealers
       </button>
       <div className="mt-3 flex items-center gap-1.5 text-[11px] text-muted-foreground">
@@ -336,7 +422,19 @@ function RatePublishCard({
   );
 }
 
-function KPI({ i: Icon, l, v, d, tone }: { i: React.ComponentType<{ className?: string }>; l: string; v: string; d: string; tone?: "gain" }) {
+function KPI({
+  i: Icon,
+  l,
+  v,
+  d,
+  tone,
+}: {
+  i: React.ComponentType<{ className?: string }>;
+  l: string;
+  v: string;
+  d: string;
+  tone?: "gain";
+}) {
   return (
     <GlassCard className="p-5">
       <div className="flex items-center justify-between">
@@ -346,7 +444,13 @@ function KPI({ i: Icon, l, v, d, tone }: { i: React.ComponentType<{ className?: 
         </div>
       </div>
       <div className="metallic-text mt-3 font-mono text-2xl font-semibold">{v}</div>
-      <div className={"mt-1 text-xs " + (tone === "gain" ? "text-[var(--gain)]" : "text-muted-foreground")}>{d}</div>
+      <div
+        className={
+          "mt-1 text-xs " + (tone === "gain" ? "text-[var(--gain)]" : "text-muted-foreground")
+        }
+      >
+        {d}
+      </div>
     </GlassCard>
   );
 }

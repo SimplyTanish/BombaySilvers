@@ -25,10 +25,7 @@ function StaffDealers() {
   return (
     <RequireRole role={["staff", "admin", "super_admin"]}>
       <AppShell>
-        <PageTitle
-          title="Dealer lookup"
-          subtitle="Find a dealer by name, phone or email"
-        />
+        <PageTitle title="Dealer lookup" subtitle="Find a dealer by name, phone or email" />
 
         <div className="relative mb-5 max-w-md">
           <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
@@ -77,7 +74,12 @@ function StaffDealers() {
                     </div>
                   </div>
                   {dealer && (
-                    <span className={"rounded-full px-2 py-0.5 text-[11px] " + (tierTone[dealer.tier] ?? "bg-[var(--surface-3)] text-muted-foreground")}>
+                    <span
+                      className={
+                        "rounded-full px-2 py-0.5 text-[11px] " +
+                        (tierTone[dealer.tier] ?? "bg-[var(--surface-3)] text-muted-foreground")
+                      }
+                    >
                       {dealer.tier}
                     </span>
                   )}
@@ -85,17 +87,30 @@ function StaffDealers() {
                 {dealer && (
                   <div className="mt-3 grid grid-cols-3 gap-2 text-xs">
                     <div className="rounded-lg border border-border/50 bg-[var(--surface-2)]/40 p-2">
-                      <div className="text-[10px] uppercase tracking-widest text-muted-foreground">Code</div>
+                      <div className="text-[10px] uppercase tracking-widest text-muted-foreground">
+                        Code
+                      </div>
                       <div className="mt-0.5 font-mono">{dealer.dealer_code}</div>
                     </div>
                     <div className="rounded-lg border border-border/50 bg-[var(--surface-2)]/40 p-2">
-                      <div className="text-[10px] uppercase tracking-widest text-muted-foreground">Balance</div>
-                      <div className={"mt-0.5 font-mono " + (Number(dealer.current_balance) < 0 ? "text-[var(--loss)]" : "text-[var(--gain)]")}>
+                      <div className="text-[10px] uppercase tracking-widest text-muted-foreground">
+                        Balance
+                      </div>
+                      <div
+                        className={
+                          "mt-0.5 font-mono " +
+                          (Number(dealer.current_balance) < 0
+                            ? "text-[var(--loss)]"
+                            : "text-[var(--gain)]")
+                        }
+                      >
                         ₹{fmtINR(dealer.current_balance)}
                       </div>
                     </div>
                     <div className="rounded-lg border border-border/50 bg-[var(--surface-2)]/40 p-2">
-                      <div className="text-[10px] uppercase tracking-widest text-muted-foreground">Credit</div>
+                      <div className="text-[10px] uppercase tracking-widest text-muted-foreground">
+                        Credit
+                      </div>
                       <div className="mt-0.5 font-mono">₹{fmtINR(dealer.credit_limit)}</div>
                     </div>
                   </div>

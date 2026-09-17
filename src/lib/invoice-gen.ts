@@ -78,7 +78,8 @@ export const generateInvoicePdf = createServerFn({ method: "POST" })
     const inv = invoice as unknown as InvoiceRow;
     const firm = inv.dealers?.firm ?? null;
 
-    const isStaff = (callerDealer as { role?: { role?: string } } | null)?.role?.role &&
+    const isStaff =
+      (callerDealer as { role?: { role?: string } } | null)?.role?.role &&
       ["admin", "super_admin", "staff"].includes(
         (callerDealer as { role?: { role?: string } } | null)?.role?.role ?? "",
       );
@@ -90,9 +91,7 @@ export const generateInvoicePdf = createServerFn({ method: "POST" })
     // Order items for line items.
     const { data: items } = await admin
       .from("order_items")
-      .select(
-        "quantity, unit_price, products(name, unit)",
-      )
+      .select("quantity, unit_price, products(name, unit)")
       .eq("order_id", inv.order_id);
 
     const rows = (items ?? []) as unknown as Array<{
@@ -103,7 +102,11 @@ export const generateInvoicePdf = createServerFn({ method: "POST" })
 
     const pdfData: InvoicePdfData = {
       invoiceNumber: inv.invoice_number,
-      invoiceDate: new Intl.DateTimeFormat("en-IN", { day: "2-digit", month: "short", year: "numeric" }).format(new Date(inv.invoice_date)),
+      invoiceDate: new Intl.DateTimeFormat("en-IN", {
+        day: "2-digit",
+        month: "short",
+        year: "numeric",
+      }).format(new Date(inv.invoice_date)),
       orderNumber: inv.orders?.order_number ?? "—",
       dealer: {
         name: firm?.firm_name ?? "Bombay Silvers Dealer",
@@ -145,9 +148,7 @@ export const generateInvoicePdf = createServerFn({ method: "POST" })
       throw new Error(`Failed to save invoice PDF path: ${updateError.message}`);
     }
 
-    const { data: signed } = await admin.storage
-      .from("invoices")
-      .createSignedUrl(filePath, 3600);
+    const { data: signed } = await admin.storage.from("invoices").createSignedUrl(filePath, 3600);
 
     return {
       pdfUrl: signed?.signedUrl ?? null,

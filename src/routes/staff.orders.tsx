@@ -96,13 +96,22 @@ function StaffOrders() {
                 {/* Header */}
                 <div className="flex items-start justify-between gap-3">
                   <div>
-                    <div className="font-mono text-sm text-muted-foreground">{order.order_number}</div>
-                    <div className="mt-0.5 text-lg font-semibold">{order.dealer?.dealer_code ?? "—"}</div>
+                    <div className="font-mono text-sm text-muted-foreground">
+                      {order.order_number}
+                    </div>
+                    <div className="mt-0.5 text-lg font-semibold">
+                      {order.dealer?.dealer_code ?? "—"}
+                    </div>
                     <div className="text-xs text-muted-foreground">
                       {order.delivery_name} · {order.delivery_city}
                     </div>
                   </div>
-                  <span className={"rounded-full px-2.5 py-1 text-[11px] " + (statusTone[order.status] ?? "bg-[var(--surface-3)]")}>
+                  <span
+                    className={
+                      "rounded-full px-2.5 py-1 text-[11px] " +
+                      (statusTone[order.status] ?? "bg-[var(--surface-3)]")
+                    }
+                  >
                     {pretty(order.status)}
                   </span>
                 </div>
@@ -124,7 +133,12 @@ function StaffOrders() {
                   <div className="flex items-center justify-between text-muted-foreground">
                     <span>Created</span>
                     <span className="font-mono">
-                      {new Intl.DateTimeFormat("en-IN", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" }).format(new Date(order.created_at))}
+                      {new Intl.DateTimeFormat("en-IN", {
+                        day: "2-digit",
+                        month: "short",
+                        hour: "2-digit",
+                        minute: "2-digit",
+                      }).format(new Date(order.created_at))}
                     </span>
                   </div>
                 </div>

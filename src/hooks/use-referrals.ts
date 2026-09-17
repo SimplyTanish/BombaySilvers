@@ -46,13 +46,12 @@ export function useMyReferrals() {
   return useQuery({
     queryKey: referralKeys.mine,
     queryFn: async () => {
-      const {
-        data,
-        error,
-        count,
-      } = await supabase
+      const { data, error, count } = await supabase
         .from("referrals")
-        .select("id, referred_name, referred_phone, status, commission_rate, commission_amount, commission_paid_at, created_at, referred_dealer:dealers(dealer_code)", { count: "exact" })
+        .select(
+          "id, referred_name, referred_phone, status, commission_rate, commission_amount, commission_paid_at, created_at, referred_dealer:dealers(dealer_code)",
+          { count: "exact" },
+        )
         .order("created_at", { ascending: false });
 
       if (error) {
@@ -66,7 +65,7 @@ export function useMyReferrals() {
         pending: rows.filter((r) => r.status === "pending").length,
         active: rows.filter((r) => r.status === "active" || r.status === "rewarded").length,
         earned: rows.reduce(
-          (sum, r) => sum + Number(r.status === "rewarded" ? r.commission_amount ?? 0 : 0),
+          (sum, r) => sum + Number(r.status === "rewarded" ? (r.commission_amount ?? 0) : 0),
           0,
         ),
       };

@@ -69,10 +69,7 @@ async function fetchAnalytics(): Promise<AdminAnalytics> {
   const openOrderValue = orders
     .filter((o) => o.status !== "delivered" && o.status !== "cancelled")
     .reduce((s, o) => s + Number(o.grand_total ?? 0), 0);
-  const mtdTurnover = (ordersMtd.data ?? []).reduce(
-    (s, o) => s + Number(o.grand_total ?? 0),
-    0,
-  );
+  const mtdTurnover = (ordersMtd.data ?? []).reduce((s, o) => s + Number(o.grand_total ?? 0), 0);
   const inventoryValue = (inventoryRes.data ?? []).reduce(
     (s, i) => s + Number(i.quantity_available ?? 0) * Number(i.rate_per_gram ?? 0),
     0,

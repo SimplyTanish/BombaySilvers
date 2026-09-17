@@ -64,10 +64,7 @@ export function usePublishRates() {
         currency_code: "INR",
         published_by: user?.id ?? null,
       }));
-      const { data, error } = await supabase
-        .from("published_rates")
-        .insert(payload)
-        .select();
+      const { data, error } = await supabase.from("published_rates").insert(payload).select();
       if (error) throw error;
       return data;
     },

@@ -12,13 +12,7 @@ const staffKeys = {
 };
 
 export type StaffOrderStatus =
-  | "draft"
-  | "pending"
-  | "confirmed"
-  | "dispatched"
-  | "in_transit"
-  | "delivered"
-  | "cancelled";
+  "draft" | "pending" | "confirmed" | "dispatched" | "in_transit" | "delivered" | "cancelled";
 
 export interface StaffOrder {
   id: string;
@@ -37,7 +31,13 @@ export interface StaffOrder {
   updated_at: string;
   dispatched_at: string | null;
   delivered_at: string | null;
-  dealer: { id: string; dealer_code: string; current_balance: number; credit_limit: number; status: string } | null;
+  dealer: {
+    id: string;
+    dealer_code: string;
+    current_balance: number;
+    credit_limit: number;
+    status: string;
+  } | null;
   items: Array<{
     id: string;
     quantity: number;
@@ -54,7 +54,14 @@ export interface InventoryRow {
   quantity_reserved: number;
   rate_per_gram: number;
   updated_at: string;
-  product: { id: string; name: string; sku: string; metal_type: string; purity: number; unit: string };
+  product: {
+    id: string;
+    name: string;
+    sku: string;
+    metal_type: string;
+    purity: number;
+    unit: string;
+  };
   warehouse: { id: string; name: string; city: string };
 }
 
@@ -89,10 +96,7 @@ export function useStaffOrders(status?: StaffOrderStatus | "all") {
   return useQuery({
     queryKey: [...staffKeys.orders, status],
     queryFn: async () => {
-      let q = supabase
-        .from("orders")
-        .select(orderQuery)
-        .order("created_at", { ascending: false });
+      let q = supabase.from("orders").select(orderQuery).order("created_at", { ascending: false });
       if (status && status !== "all") q = q.eq("status", status);
       const { data, error } = await q;
       if (error) throw error;
@@ -196,10 +200,9 @@ export function useReserveForOrder() {
   return useMutation({
     // Called before confirming an order: reserves stock, transitions pending→confirmed.
     mutationFn: async (orderId: string) => {
-      const { error: reserveError } = await supabase.rpc(
-        "reserve_inventory_for_order",
-        { p_order_id: orderId },
-      );
+      const { error: reserveError } = await supabase.rpc("reserve_inventory_for_order", {
+        p_order_id: orderId,
+      });
       if (reserveError) throw reserveError;
       const { data, error } = await supabase.rpc("transition_order_status", {
         p_order_id: orderId,
