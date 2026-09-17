@@ -14,7 +14,17 @@ export type InvoicePdfData = {
 
 const money = (value: number) => `₹${new Intl.NumberFormat("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(value)}`;
 
+export async function renderInvoicePdfBytes(data: InvoicePdfData): Promise<Uint8Array> {
+  const pdf = await renderInvoicePdf(data);
+  return new Uint8Array(pdf.output("arraybuffer"));
+}
+
 export async function downloadInvoicePdf(data: InvoicePdfData) {
+  const pdf = await renderInvoicePdf(data);
+  pdf.save(`${data.invoiceNumber}.pdf`);
+}
+
+async function renderInvoicePdf(data: InvoicePdfData) {
   const pdf = new jsPDF({ unit: "mm", format: "a4" });
   const width = pdf.internal.pageSize.getWidth();
   const qr = await QRCode.toDataURL(`BOMBAY-SILVERS|${data.invoiceNumber}|${data.orderNumber}|${data.total.toFixed(2)}`, { margin: 0, width: 240, color: { dark: "#18181b", light: "#ffffff" } });
@@ -40,5 +50,5 @@ export async function downloadInvoicePdf(data: InvoicePdfData) {
   pdf.setFillColor(24, 24, 27); pdf.rect(120, y - 6, width - 136, 12, "F"); pdf.setTextColor(255, 255, 255); pdf.setFont("helvetica", "bold"); pdf.text("GRAND TOTAL", 124, y + 1.5); pdf.text(money(data.total), width - 19, y + 1.5, { align: "right" });
   pdf.setTextColor(24, 24, 27); pdf.addImage(qr, "PNG", 16, y - 7, 28, 28); pdf.setFont("helvetica", "normal"); pdf.setFontSize(7); pdf.text("Scan to verify invoice", 16, y + 25);
   pdf.setDrawColor(225, 225, 228); pdf.line(16, 274, width - 16, 274); pdf.setFontSize(7); pdf.setTextColor(105, 105, 112); pdf.text("This is a system-generated GST invoice from Bombay Silvers. Please retain for your records.", width / 2, 280, { align: "center" });
-  pdf.save(`${data.invoiceNumber}.pdf`);
+  return pdf;
 }
