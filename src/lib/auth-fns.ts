@@ -142,50 +142,102 @@ export const lookupEmailByPhone = createServerFn({ method: "POST" })
       phone: d.phone.trim(),
     };
   })
-  .handler(
-    async ({
-      data,
-    }): Promise<{ found: false } | { found: true; email: string }> => {
-      const admin = createAdminClient() as unknown as AdminClientLike;
+  .handler(async ({ data }): Promise<{ found: false } | { found: true; email: string }> => {
+    const admin = createAdminClient() as unknown as AdminClientLike;
 
-      const { data: userData, error: userError } = await admin
-        .from("users")
-        .select("id, email, role")
-        .eq("phone", data.phone)
-        .eq("role", "dealer")
-        .maybeSingle();
+    const { data: userData, error: userError } = await admin
+      .from("users")
+      .select("id, email, role")
+      .eq("phone", data.phone)
+      .eq("role", "dealer")
+      .maybeSingle();
 
-      const user = userData as UserLookupRow | null;
+    const user = userData as UserLookupRow | null;
 
-      if (userError || !user) {
-        console.error("User lookup failed:", userError);
-        return { found: false };
-      }
-
-      if (!user.email) {
-        console.error("User lookup returned an empty email:", user.id);
-        return { found: false };
-      }
-
-      const { data: dealerData, error: dealerError } = await admin
-        .from("dealers")
-        .select("id")
-        .eq("user_id", user.id)
-        .maybeSingle();
-
-      const dealer = dealerData as DealerLookupRow | null;
-
-      if (dealerError || !dealer) {
-        console.error("Dealer lookup failed:", dealerError);
-        return { found: false };
-      }
-
-      return {
-        found: true,
-        email: user.email,
-      };
+    if (userError || !user) {
+      console.error("User lookup failed:", userError);
+      return { found: false };
     }
-  );
+
+    if (!user.email) {
+      console.error("User lookup returned an empty email:", user.id);
+      return { found: false };
+    }
+
+    const { data: dealerData, error: dealerError } = await admin
+      .from("dealers")
+      .select("id")
+      .eq("user_id", user.id)
+      .maybeSingle();
+
+    const dealer = dealerData as DealerLookupRow | null;
+
+    if (dealerError || !dealer) {
+      console.error("Dealer lookup failed:", dealerError);
+      return { found: false };
+    }
+
+    return {
+      found: true,
+      email: user.email,
+    };
+  });
+
+/**
+ * Look up a dealer's email by their dealer ID (dealer code).
+ * Returns the email used for OTP login.
+ */
+export const lookupEmailByDealerCode = createServerFn({ method: "POST" })
+  .validator((raw: unknown) => {
+    const d = raw as { dealerCode?: string };
+
+    if (typeof d?.dealerCode !== "string" || !d.dealerCode.trim()) {
+      throw new Error("Dealer ID is required");
+    }
+
+    return {
+      dealerCode: d.dealerCode.trim().toUpperCase(),
+    };
+  })
+  .handler(async ({ data }): Promise<{ found: false } | { found: true; email: string }> => {
+    const admin = createAdminClient() as unknown as AdminClientLike;
+
+    const { data: dealerData, error: dealerError } = await admin
+      .from("dealers")
+      .select("user_id")
+      .eq("dealer_code", data.dealerCode)
+      .maybeSingle();
+
+    const dealer = dealerData as { user_id: string } | null;
+
+    if (dealerError || !dealer) {
+      console.error("Dealer ID lookup failed:", dealerError);
+      return { found: false };
+    }
+
+    const { data: userData, error: userError } = await admin
+      .from("users")
+      .select("email")
+      .eq("id", dealer.user_id)
+      .maybeSingle();
+
+    const user = userData as { email: string | null } | null;
+
+    if (userError || !user) {
+      console.error("User lookup failed for dealer:", dealer.user_id);
+      return { found: false };
+    }
+
+    if (!user.email) {
+      console.error("Dealer account has no email registered:", dealer.user_id);
+      return { found: false };
+    }
+
+    return {
+      found: true,
+      email: user.email,
+    };
+  });
 
 export const saveDealerProfile = createServerFn({ method: "POST" })
   .validator((raw: unknown) => {
@@ -194,8 +246,7 @@ export const saveDealerProfile = createServerFn({ method: "POST" })
     }
 
     const d = raw as Record<string, unknown>;
-    const userId =
-      typeof d.user_id === "string" && d.user_id.trim() ? d.user_id.trim() : "";
+    const userId = typeof d.user_id === "string" && d.user_id.trim() ? d.user_id.trim() : "";
 
     if (!userId) {
       throw new Error("Authenticated user id is required");
@@ -221,7 +272,7 @@ export const saveDealerProfile = createServerFn({ method: "POST" })
           ? d.years_in_business
           : typeof d.yearsInBusiness === "string"
             ? d.yearsInBusiness
-            : 0
+            : 0,
       ),
       primary_metal_focus: normalizeMetalFocus(d.primary_metal_focus ?? d.primaryMetal),
       monthly_turnover_range:
