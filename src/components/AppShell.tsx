@@ -7,7 +7,6 @@ import {
   Receipt,
   Users2,
   Settings,
-  Search,
   Shield,
   Gift,
   LineChart,
@@ -267,13 +266,6 @@ function Topbar({ onMenuClick }: { onMenuClick: () => void }) {
         <div className="lg:hidden">
           <BrandMark compact />
         </div>
-        <div className="relative ml-auto hidden max-w-md flex-1 md:block">
-          <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-          <input
-            placeholder="Search orders, dealers, invoices…"
-            className="h-9 w-full rounded-lg border border-border/60 bg-[var(--surface-2)] pl-9 pr-3 text-sm outline-none placeholder:text-muted-foreground focus:border-[var(--silver-muted)]"
-          />
-        </div>
         <LiveDot label="Market Open" />
         <NotificationCenter />
       </div>
@@ -312,11 +304,7 @@ function BottomNav() {
 }
 
 export function AppShell({ children }: { children: ReactNode }) {
-  const { session, user, dbUser, role, dealer, loading, signOut } = useAuth();
-
-  console.log("Current Role:", role);
-  console.log("Database User:", dbUser);
-  console.log("Dealer:", dealer);
+  const { session, user, role, loading, signOut } = useAuth();
 
   const navigate = useNavigate();
   const pathname = useRouterState({ select: (s) => s.location.pathname });
@@ -343,7 +331,7 @@ export function AppShell({ children }: { children: ReactNode }) {
     <div className="min-h-screen">
       <div className="flex">
         {/* Desktop sidebar */}
-        <aside className="hidden w-[248px] shrink-0 flex-col border-r border-border/60 bg-[var(--surface-1)]/60 lg:flex">
+        <aside className="hidden w-[248px] flex-none flex-col border-r border-border/60 bg-[var(--surface-1)]/60 lg:flex">
           <SidebarNav pathname={pathname} user={user} onSignOut={handleSignOut} role={role} />
         </aside>
 

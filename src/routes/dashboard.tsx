@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
-import { useNavigate } from "@tanstack/react-router";
+import { useCallback, useEffect, useState } from "react";
+import { Link, useNavigate } from "@tanstack/react-router";
 import { AppShell, GlassCard, LiveDot, PageTitle } from "@/components/AppShell";
 import { Area, AreaChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import {
@@ -13,12 +13,24 @@ import {
   Bell,
   RefreshCw,
   WifiOff,
+  Clock,
 } from "lucide-react";
 import { useLiveRates } from "@/hooks/use-live-rates";
+import { useNotifications } from "@/hooks/use-notifications";
+import {
+  inventoryValue,
+  inventoryUnits,
+  useInventory,
+  type SalesInventoryRow,
+} from "@/hooks/use-inventory";
 import { fmtINR, fmtChange, fmtPct, generateSparkline } from "@/lib/rates";
 import type { MetalRate } from "@/lib/rates";
 import { supabase } from "@/lib/supabase";
 import { toast } from "sonner";
+import { useQueryClient } from "@tanstack/react-query";
+import { inventoryKeys } from "@/hooks/use-inventory";
+import { DealerOrderDialog } from "@/components/DealerOrderDialog";
+import { ReserveStockDialog } from "@/components/ReserveStockDialog";
 import {
   Dialog,
   DialogContent,
@@ -27,7 +39,6 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { DealerOrderDialog } from "@/components/DealerOrderDialog";
 
 export const Route = createFileRoute("/dashboard")({
   head: () => ({ meta: [{ title: "Dashboard · Bombay Silvers" }] }),
@@ -45,16 +56,88 @@ function timeAgo(epochMs: number): string {
   return `${Math.floor(mins / 60)}h ago`;
 }
 
+type DisplayOrder = { id: string; item: string; status: string; amount: string; date: Date };
+type DisplayOrderRow = {
+  order_number: string;
+  status: string;
+  grand_total: number;
+  created_at: string;
+  order_items: Array<{ quantity: number; products: { name: string } | null }>;
+};
+
+function sumUnits(rows: SalesInventoryRow[], metal: string): string {
+  const grams = rows
+    .filter((row) => row.products?.metal_type === metal)
+    .reduce((sum, row) => sum + row.quantity_available * (row.products?.unit_weight_grams ?? 0), 0);
+  if (grams === 0) return "0 g";
+  if (grams >= 1000)
+    return `${(grams / 1000).toLocaleString("en-IN", { maximumFractionDigits: 1 })} kg`;
+  return `${gramFormatter(grams)} g`;
+}
+
+function gramFormatter(grams: number): string {
+  return grams.toLocaleString("en-IN", { maximumFractionDigits: 0 });
+}
+
+function fmtUnits(units: number): string {
+  return units.toLocaleString("en-IN", { maximumFractionDigits: 0 });
+}
+
+function formatDateTime(date: Date): string {
+  return new Intl.DateTimeFormat("en-IN", {
+    day: "2-digit",
+    month: "short",
+    hour: "2-digit",
+    minute: "2-digit",
+  }).format(date);
+}
+
 // ─── Dashboard ───────────────────────────────────────────────────────────────
 
 function Dashboard() {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const { data, isLoading, isError, error, isFetching, refetch, dataUpdatedAt } = useLiveRates();
+  const { data: notifications } = useNotifications();
+  const { data: stock = [] } = useInventory();
   const [reserveOpen, setReserveOpen] = useState(false);
   const [alertOpen, setAlertOpen] = useState(false);
   const [orderOpen, setOrderOpen] = useState(false);
+  const [recentOrders, setRecentOrders] = useState<DisplayOrder[]>([]);
 
-  const isApiKeyMissing = isError && (error?.message ?? "").includes("GOLDAPI_KEY_MISSING");
+  const loadRecentOrders = useCallback(async () => {
+    const { data, error } = await supabase
+      .from("orders")
+      .select(
+        "order_number, status, grand_total, created_at, order_items(quantity, products(name))",
+      )
+      .order("created_at", { ascending: false })
+      .limit(4);
+    if (error) return;
+    setRecentOrders(
+      ((data ?? []) as unknown as DisplayOrderRow[]).map((order) => ({
+        id: order.order_number,
+        item: order.order_items[0]
+          ? `${order.order_items[0].products?.name ?? "Product"} · ${order.order_items[0].quantity}`
+          : "Order details pending",
+        status: order.status.charAt(0).toUpperCase() + order.status.slice(1),
+        amount: `₹${new Intl.NumberFormat("en-IN", { maximumFractionDigits: 0 }).format(
+          order.grand_total,
+        )}`,
+        date: new Date(order.created_at),
+      })),
+    );
+  }, []);
+  useEffect(() => {
+    void loadRecentOrders();
+  }, [loadRecentOrders]);
+
+  const value = inventoryValue(stock);
+  const units = inventoryUnits(stock);
+  const warehouses = new Set(stock.map((row) => row.warehouses?.id ?? row.warehouse_id)).size;
+  const goldKg = sumUnits(stock, "gold");
+  const silverKg = sumUnits(stock, "silver");
+  const unread = notifications?.filter((n) => !n.is_read).length ?? 0;
 
   return (
     <AppShell>
@@ -95,29 +178,6 @@ function Dashboard() {
         }
       />
 
-      {/* API key missing — one-time setup nudge */}
-      {isApiKeyMissing && (
-        <div className="mb-5 flex items-start gap-3 rounded-xl border border-[var(--warn)]/40 bg-[var(--warn)]/8 p-4 text-sm">
-          <WifiOff className="mt-0.5 h-4 w-4 shrink-0 text-[var(--warn)]" />
-          <div>
-            <div className="font-medium text-[var(--warn)]">Live rates not configured</div>
-            <div className="mt-0.5 text-muted-foreground">
-              Add your <span className="font-mono text-foreground">GOLDAPI_KEY</span> to Replit
-              Secrets. Get a free key at{" "}
-              <a
-                href="https://www.goldapi.io"
-                target="_blank"
-                rel="noreferrer"
-                className="underline hover:text-foreground"
-              >
-                goldapi.io
-              </a>
-              . Prices below are indicative.
-            </div>
-          </div>
-        </div>
-      )}
-
       {/* Last updated chip */}
       {dataUpdatedAt > 0 && (
         <div className="mb-4 text-[11px] text-muted-foreground">
@@ -132,7 +192,7 @@ function Dashboard() {
           hint="MCX · per 10g"
           rate={data?.gold}
           isLoading={isLoading}
-          isError={isError && !isApiKeyMissing}
+          isError={isError}
           fallbackPrice="72,148"
           fallbackSeries={FALLBACK_GOLD_SERIES}
         />
@@ -141,7 +201,7 @@ function Dashboard() {
           hint="MCX · per kg"
           rate={data?.silver}
           isLoading={isLoading}
-          isError={isError && !isApiKeyMissing}
+          isError={isError}
           fallbackPrice="89,420"
           fallbackSeries={FALLBACK_SILVER_SERIES}
         />
@@ -151,8 +211,12 @@ function Dashboard() {
               <div className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
                 Inventory value
               </div>
-              <div className="metallic-text mt-2 font-mono text-3xl font-semibold">₹4.82 Cr</div>
-              <div className="mt-1 text-xs text-muted-foreground">Across 4 warehouses</div>
+              <div className="metallic-text mt-2 font-mono text-3xl font-semibold">
+                ₹{fmtINR(value)}
+              </div>
+              <div className="mt-1 text-xs text-muted-foreground">
+                Across {warehouses} warehouse{warehouses === 1 ? "" : "s"} · {fmtUnits(units)}
+              </div>
             </div>
             <div className="grid h-12 w-12 place-items-center rounded-xl bg-[var(--surface-3)]">
               <Boxes className="h-6 w-6 text-[var(--platinum)]" />
@@ -160,9 +224,9 @@ function Dashboard() {
           </div>
           <div className="mt-5 grid grid-cols-3 gap-3 text-center">
             {[
-              ["Silver 999", "1,240 kg"],
-              ["Gold bars", "18.4 kg"],
-              ["Coins", "6,412"],
+              ["Silver 999", silverKg],
+              ["Gold 999", goldKg],
+              ["Total units", fmtUnits(units)],
             ].map(([l, v]) => (
               <div
                 key={l}
@@ -220,39 +284,41 @@ function Dashboard() {
               <div className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
                 Recent orders
               </div>
-              <div className="mt-1 text-sm text-muted-foreground">Last 24 hours · 6 total</div>
+              <div className="mt-1 text-sm text-muted-foreground">{recentOrders.length} total</div>
             </div>
-            <button className="text-xs text-muted-foreground hover:text-foreground">
+            <Link to="/orders" className="text-xs text-muted-foreground hover:text-foreground">
               View all →
-            </button>
+            </Link>
           </div>
           <div className="mt-4 divide-y divide-border/60">
-            {[
-              ["#BS-24-11284", "Silver 999 · 50 kg", "Dispatched", "₹44.71 L", "gain"],
-              ["#BS-24-11279", "Gold coins · 20 × 50g", "Processing", "₹72.14 L", "warn"],
-              ["#BS-24-11271", "Silver bars · 100 kg", "Approved", "₹89.42 L", "warn"],
-              ["#BS-24-11268", "Gold 999 · 500 g", "Delivered", "₹36.07 L", "gain"],
-            ].map(([id, item, status, amt, tone]) => (
-              <div key={id} className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-4 py-3">
-                <div className="min-w-0">
-                  <div className="truncate font-mono text-xs text-muted-foreground">{id}</div>
-                  <div className="truncate text-sm">{item}</div>
-                </div>
-                <div className="flex items-center gap-4">
-                  <span
-                    className={
-                      "hidden rounded-full px-2 py-0.5 text-[11px] sm:inline-flex " +
-                      (tone === "gain"
-                        ? "bg-[var(--gain)]/10 text-[var(--gain)]"
-                        : "bg-[var(--warn)]/10 text-[var(--warn)]")
-                    }
-                  >
-                    {status}
-                  </span>
-                  <span className="font-mono text-sm">{amt}</span>
-                </div>
+            {recentOrders.length === 0 ? (
+              <div className="py-4 text-sm text-muted-foreground">
+                No orders yet. Place your first order to get started.
               </div>
-            ))}
+            ) : (
+              recentOrders.map((order) => (
+                <div
+                  key={order.id}
+                  className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-4 py-3"
+                >
+                  <div className="min-w-0">
+                    <div className="truncate font-mono text-xs text-muted-foreground">
+                      {order.id}
+                    </div>
+                    <div className="truncate text-sm">{order.item}</div>
+                    <div className="mt-0.5 flex items-center gap-1 text-[11px] text-muted-foreground">
+                      <Clock className="h-3 w-3" /> {formatDateTime(order.date)}
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-4">
+                    <span className="hidden rounded-full bg-[var(--surface-3)] px-2 py-0.5 text-[11px] text-muted-foreground sm:inline-flex">
+                      {order.status}
+                    </span>
+                    <span className="font-mono text-sm">{order.amount}</span>
+                  </div>
+                </div>
+              ))
+            )}
           </div>
         </GlassCard>
       </div>
@@ -263,35 +329,41 @@ function Dashboard() {
           <div className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
             Notifications
           </div>
-          <span className="text-xs text-muted-foreground">3 unread</span>
+          <span className="text-xs text-muted-foreground">
+            {unread === 0 ? "All caught up" : `${unread} unread`}
+          </span>
         </div>
         <div className="mt-3 grid gap-3 sm:grid-cols-3">
-          {[
-            ["Rate alert", "Silver 999 crossed ₹89,500/kg", "2m ago", "warn"],
-            ["Ledger", "Payment of ₹18.42 L received", "1h ago", "gain"],
-            ["Inventory", "Gold 100g bars restocked (Mumbai)", "3h ago", "info"],
-          ].map(([t, d, ago, tone]) => (
-            <div
-              key={t as string}
-              className="rounded-xl border border-border/60 bg-[var(--surface-2)]/60 p-4"
-            >
-              <div className="flex items-center gap-2">
-                <span
-                  className={
-                    "h-1.5 w-1.5 rounded-full " +
-                    (tone === "gain"
-                      ? "bg-[var(--gain)]"
-                      : tone === "warn"
-                        ? "bg-[var(--warn)]"
-                        : "bg-[var(--silver)]")
-                  }
-                />
-                <div className="text-sm font-medium">{t}</div>
-                <div className="ml-auto text-[10px] text-muted-foreground">{ago}</div>
-              </div>
-              <div className="mt-1 text-xs text-muted-foreground">{d}</div>
+          {(notifications ?? []).slice(0, 3).length === 0 ? (
+            <div className="rounded-xl border border-border/60 bg-[var(--surface-2)]/60 p-4 text-sm text-muted-foreground sm:col-span-3">
+              No notifications yet.
             </div>
-          ))}
+          ) : (
+            (notifications ?? []).slice(0, 3).map((n) => (
+              <div
+                key={n.id}
+                className="rounded-xl border border-border/60 bg-[var(--surface-2)]/60 p-4"
+              >
+                <div className="flex items-center gap-2">
+                  <span
+                    className={
+                      "h-1.5 w-1.5 rounded-full " +
+                      (n.type === "payment"
+                        ? "bg-[var(--gain)]"
+                        : n.type === "rate_alert"
+                          ? "bg-[var(--warn)]"
+                          : "bg-[var(--silver)]")
+                    }
+                  />
+                  <div className="text-sm font-medium truncate">{n.title}</div>
+                  <div className="ml-auto shrink-0 text-[10px] text-muted-foreground">
+                    {timeAgo(new Date(n.created_at).getTime())}
+                  </div>
+                </div>
+                <div className="mt-1 text-xs text-muted-foreground">{n.body}</div>
+              </div>
+            ))
+          )}
         </div>
       </GlassCard>
 
@@ -300,153 +372,16 @@ function Dashboard() {
         onOpenChange={setReserveOpen}
         onReserved={() => {
           refetch();
-          window.location.reload();
+          void queryClient.invalidateQueries({ queryKey: inventoryKeys.all });
         }}
       />
       <RateAlertDialog open={alertOpen} onOpenChange={setAlertOpen} />
-      <DealerOrderDialog open={orderOpen} onOpenChange={setOrderOpen} />
+      <DealerOrderDialog
+        open={orderOpen}
+        onOpenChange={setOrderOpen}
+        onCreated={() => void loadRecentOrders()}
+      />
     </AppShell>
-  );
-}
-
-type InventoryOption = {
-  id: string;
-  quantity_available: number;
-  products: { name: string; sku: string } | null;
-  warehouses: { name: string } | null;
-};
-
-function ReserveStockDialog({
-  open,
-  onOpenChange,
-  onReserved,
-}: {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-  onReserved: () => void;
-}) {
-  const [inventory, setInventory] = useState<InventoryOption[]>([]);
-  const [inventoryId, setInventoryId] = useState("");
-  const [quantity, setQuantity] = useState("");
-  const [remarks, setRemarks] = useState("");
-  const [loading, setLoading] = useState(false);
-  const selected = inventory.find((item) => item.id === inventoryId);
-
-  useEffect(() => {
-    if (!open) return;
-    setLoading(true);
-    const load = async () => {
-      try {
-        const { data, error } = await supabase
-          .from("inventory")
-          .select("id, quantity_available, products(name, sku), warehouses(name)")
-          .gt("quantity_available", 0)
-          .order("updated_at", { ascending: false });
-        if (error) toast.error("Unable to load available inventory.");
-        else setInventory((data ?? []) as unknown as InventoryOption[]);
-      } finally {
-        setLoading(false);
-      }
-    };
-    void load();
-  }, [open]);
-
-  const submit = async (event: React.FormEvent) => {
-    event.preventDefault();
-    const requested = Number(quantity);
-    if (!inventoryId || !Number.isFinite(requested) || requested <= 0) {
-      toast.error("Select a product and enter a valid quantity.");
-      return;
-    }
-    if (selected && requested > selected.quantity_available) {
-      toast.error(`Only ${selected.quantity_available} units are available.`);
-      return;
-    }
-    setLoading(true);
-    const { error } = await supabase.rpc("reserve_inventory", {
-      p_inventory_id: inventoryId,
-      p_quantity: requested,
-      p_remarks: remarks || null,
-    });
-    setLoading(false);
-    if (error) {
-      toast.error(error.message);
-      return;
-    }
-    toast.success("Stock reserved successfully.");
-    setInventoryId("");
-    setQuantity("");
-    setRemarks("");
-    onOpenChange(false);
-    onReserved();
-  };
-
-  return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent>
-        <DialogHeader>
-          <DialogTitle>Reserve stock</DialogTitle>
-          <DialogDescription>
-            Reserve currently available inventory for your next order.
-          </DialogDescription>
-        </DialogHeader>
-        <form onSubmit={submit} className="grid gap-4">
-          <label className="grid gap-1.5 text-sm">
-            Product
-            <select
-              value={inventoryId}
-              onChange={(e) => setInventoryId(e.target.value)}
-              disabled={loading}
-              className="h-10 rounded-lg border border-border bg-[var(--surface-2)] px-3 text-sm"
-            >
-              <option value="">{loading ? "Loading inventory…" : "Select product"}</option>
-              {inventory.map((item) => (
-                <option key={item.id} value={item.id}>
-                  {item.products?.name ?? "Product"} · {item.warehouses?.name ?? "Warehouse"} (
-                  {item.quantity_available} available)
-                </option>
-              ))}
-            </select>
-          </label>
-          <label className="grid gap-1.5 text-sm">
-            Quantity
-            <input
-              value={quantity}
-              onChange={(e) => setQuantity(e.target.value)}
-              type="number"
-              min="0.0001"
-              step="any"
-              disabled={loading}
-              className="h-10 rounded-lg border border-border bg-[var(--surface-2)] px-3 text-sm"
-            />
-            {selected && (
-              <span className="text-xs text-muted-foreground">
-                {selected.quantity_available} units available
-              </span>
-            )}
-          </label>
-          <label className="grid gap-1.5 text-sm">
-            Remarks
-            <textarea
-              value={remarks}
-              onChange={(e) => setRemarks(e.target.value)}
-              disabled={loading}
-              rows={3}
-              className="rounded-lg border border-border bg-[var(--surface-2)] p-3 text-sm"
-            />
-          </label>
-          <DialogFooter>
-            <button
-              type="submit"
-              disabled={loading}
-              className="inline-flex h-9 items-center justify-center rounded-xl bg-gradient-to-b from-[#f1f1f4] to-[#b6b7bb] px-4 text-sm font-medium text-black disabled:opacity-50"
-            >
-              {loading ? "Reserving…" : "Reserve stock"}
-            </button>
-          </DialogFooter>
-        </form>
-      </DialogContent>
-    </Dialog>
   );
 }
 

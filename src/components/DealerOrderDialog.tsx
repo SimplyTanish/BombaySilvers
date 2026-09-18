@@ -29,10 +29,12 @@ export function DealerOrderDialog({
   open,
   onOpenChange,
   onCreated,
+  presetInventoryId,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onCreated?: () => void;
+  presetInventoryId?: string;
 }) {
   const [inventory, setInventory] = useState<InventoryProduct[]>([]);
   const [metal, setMetal] =
@@ -62,6 +64,15 @@ export function DealerOrderDialog({
     };
     void load();
   }, [open]);
+
+  useEffect(() => {
+    if (!open || !presetInventoryId) return;
+    const match = inventory.find((item) => item.id === presetInventoryId);
+    if (match?.products) {
+      setMetal(match.products.metal_type);
+      setInventoryId(match.id);
+    }
+  }, [inventory, presetInventoryId, open]);
 
   const products = useMemo(
     () => inventory.filter((item) => item.products?.metal_type === metal),

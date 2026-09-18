@@ -89,9 +89,9 @@
   --ring: oklch(0.75 0.015 250);
 
   /* Brand accents */
-  --silver: oklch(0.86 0.008 250);         /* #C0C0C0-ish */
+  --silver: oklch(0.86 0.008 250); /* #C0C0C0-ish */
   --silver-muted: oklch(0.7 0.008 250);
-  --platinum: oklch(0.93 0.006 260);       /* #E5E4E2 */
+  --platinum: oklch(0.93 0.006 260); /* #E5E4E2 */
   --gold: oklch(0.82 0.14 85);
 
   /* Market status */
@@ -105,7 +105,12 @@
     border-color: var(--color-border);
   }
 
-  html, body {
+  html {
+    scrollbar-gutter: stable;
+  }
+
+  html,
+  body {
     background:
       radial-gradient(1200px 600px at 10% -10%, oklch(0.24 0.02 260 / 0.6), transparent 60%),
       radial-gradient(900px 500px at 100% 0%, oklch(0.22 0.03 280 / 0.5), transparent 60%),
@@ -114,18 +119,22 @@
     font-family: var(--font-display);
     -webkit-font-smoothing: antialiased;
     letter-spacing: -0.01em;
+    overflow-x: hidden;
   }
 
-  .font-mono, .tabular {
+  .font-mono,
+  .tabular {
     font-family: var(--font-mono);
     font-variant-numeric: tabular-nums;
   }
 }
 
 @utility glass {
-  background: linear-gradient(180deg,
+  background: linear-gradient(
+    180deg,
     color-mix(in oklab, var(--surface-2) 85%, transparent),
-    color-mix(in oklab, var(--surface-1) 85%, transparent));
+    color-mix(in oklab, var(--surface-1) 85%, transparent)
+  );
   border: 1px solid color-mix(in oklab, var(--platinum) 12%, transparent);
   backdrop-filter: blur(18px) saturate(140%);
   box-shadow:
@@ -143,15 +152,30 @@
 @utility grid-lines {
   background-image:
     linear-gradient(color-mix(in oklab, var(--platinum) 5%, transparent) 1px, transparent 1px),
-    linear-gradient(90deg, color-mix(in oklab, var(--platinum) 5%, transparent) 1px, transparent 1px);
+    linear-gradient(
+      90deg,
+      color-mix(in oklab, var(--platinum) 5%, transparent) 1px,
+      transparent 1px
+    );
   background-size: 40px 40px;
 }
 
 @keyframes ticker {
-  from { transform: translateX(0); }
-  to { transform: translateX(-50%); }
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-50%);
+  }
 }
 @keyframes pulse-dot {
-  0%,100% { opacity: 1; transform: scale(1); }
-  50% { opacity: .35; transform: scale(.85); }
+  0%,
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.35;
+    transform: scale(0.85);
+  }
 }
