@@ -30,7 +30,7 @@ const supabaseAnonKey =
 if (!supabaseUrl || !supabaseAnonKey) {
   throw new Error(
     "Missing Supabase environment variables. " +
-      "Ensure VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY are set in Replit Secrets."
+      "Ensure VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY are set in Replit Secrets.",
   );
 }
 
@@ -72,7 +72,7 @@ export function createAdminClient() {
   if (!serviceRoleKey) {
     throw new Error(
       "SUPABASE_SERVICE_ROLE_KEY is not set. " +
-        "This client must only be used in server-side code."
+        "This client must only be used in server-side code.",
     );
   }
   return createClient<Database>(supabaseUrl!, serviceRoleKey, {

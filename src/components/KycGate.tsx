@@ -30,10 +30,7 @@ export function KycGate({ feature, children }: Props) {
   return (
     <div className="relative min-h-[320px] overflow-hidden rounded-2xl">
       {/* Blurred content preview */}
-      <div
-        className="pointer-events-none select-none blur-[6px] opacity-30"
-        aria-hidden
-      >
+      <div className="pointer-events-none select-none blur-[6px] opacity-30" aria-hidden>
         {children}
       </div>
 
@@ -51,12 +48,11 @@ export function KycGate({ feature, children }: Props) {
         </div>
 
         <button
-           onClick={() => navigate({ to: "/kyc" })}
-           className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-b from-[#f1f1f4] to-[#b6b7bb] px-5 py-2.5 text-sm font-medium text-black shadow-[inset_0_1px_0_rgba(255,255,255,0.7)]">
+          onClick={() => navigate({ to: "/kyc" })}
+          className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-b from-[#f1f1f4] to-[#b6b7bb] px-5 py-2.5 text-sm font-medium text-black shadow-[inset_0_1px_0_rgba(255,255,255,0.7)]"
+        >
           Complete KYC <ArrowRight className="h-4 w-4" />
         </button>
-
-        
       </div>
     </div>
   );

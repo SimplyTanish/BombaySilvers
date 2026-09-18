@@ -9,23 +9,18 @@ interface RequireRoleProps {
   children: ReactNode;
 }
 
-export function RequireRole({
-  role: allowedRoles,
-  children,
-}: RequireRoleProps) {
+export function RequireRole({ role: allowedRoles, children }: RequireRoleProps) {
   const { role, loading } = useAuth();
 
   if (loading) {
     return <div className="p-8">Loading...</div>;
   }
 
-  const roles = Array.isArray(allowedRoles)
-    ? allowedRoles
-    : [allowedRoles];
+  const roles = Array.isArray(allowedRoles) ? allowedRoles : [allowedRoles];
 
   if (!role || !roles.includes(role as Role)) {
-  return <AccessDenied />;
-}
+    return <AccessDenied />;
+  }
 
   return <>{children}</>;
 }

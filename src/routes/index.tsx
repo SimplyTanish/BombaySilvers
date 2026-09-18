@@ -20,9 +20,16 @@ export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
       { title: "Bombay Silvers — Dealer Terminal" },
-      { name: "description", content: "The operating system of the Bombay Silvers dealer network. A premium bullion trading terminal for wholesalers, distributors and staff." },
+      {
+        name: "description",
+        content:
+          "The operating system of the Bombay Silvers dealer network. A premium bullion trading terminal for wholesalers, distributors and staff.",
+      },
       { property: "og:title", content: "Bombay Silvers — Dealer Terminal" },
-      { property: "og:description", content: "A Bloomberg-terminal-class platform for a 40-year bullion wholesaler." },
+      {
+        property: "og:description",
+        content: "A Bloomberg-terminal-class platform for a 40-year bullion wholesaler.",
+      },
     ],
   }),
   component: Gallery,
@@ -30,21 +37,36 @@ export const Route = createFileRoute("/")({
 
 const groups: {
   title: string;
-  items: { to: string; label: string; desc: string; icon: React.ComponentType<{ className?: string }> }[];
+  items: {
+    to: string;
+    label: string;
+    desc: string;
+    icon: React.ComponentType<{ className?: string }>;
+  }[];
 }[] = [
   {
     title: "Authentication & Onboarding",
     items: [
       { to: "/login", label: "Login", desc: "Mobile-first sign in", icon: Smartphone },
       { to: "/otp", label: "OTP Verification", desc: "6-digit challenge", icon: KeyRound },
-      { to: "/onboarding", label: "Dealer Onboarding", desc: "Firm & profile setup", icon: UserCheck },
+      {
+        to: "/onboarding",
+        label: "Dealer Onboarding",
+        desc: "Firm & profile setup",
+        icon: UserCheck,
+      },
       { to: "/kyc", label: "KYC Submission", desc: "PAN · GST · docs", icon: FileCheck2 },
     ],
   },
   {
     title: "Dealer Platform",
     items: [
-      { to: "/dashboard", label: "Dashboard", desc: "Live rates & positions", icon: LayoutDashboard },
+      {
+        to: "/dashboard",
+        label: "Dashboard",
+        desc: "Live rates & positions",
+        icon: LayoutDashboard,
+      },
       { to: "/inventory", label: "Inventory", desc: "Bars, coins, purity", icon: Boxes },
       { to: "/orders", label: "Orders", desc: "Placement & tracking", icon: ScrollText },
       { to: "/ledger", label: "Ledger", desc: "Balance & statements", icon: LineChart },
@@ -56,7 +78,12 @@ const groups: {
     title: "Operations",
     items: [
       { to: "/admin", label: "Admin Dashboard", desc: "Rates · dealers · analytics", icon: Users2 },
-      { to: "/security", label: "Security Settings", desc: "Devices · sessions · audit", icon: Shield },
+      {
+        to: "/security",
+        label: "Security Settings",
+        desc: "Devices · sessions · audit",
+        icon: Shield,
+      },
     ],
   },
 ];
@@ -73,7 +100,7 @@ function Gallery() {
         <div className="relative mx-auto max-w-6xl px-6 pb-16 pt-8 lg:pb-24 lg:pt-12">
           <div className="flex items-center justify-between">
             <BrandMark />
-            <LiveDot label="Mockup Preview" />
+            <LiveDot label="Live Platform" />
           </div>
 
           <div className="mt-16 max-w-3xl">
@@ -87,10 +114,9 @@ function Gallery() {
               built for bullion.
             </h1>
             <p className="mt-5 max-w-2xl text-base text-muted-foreground sm:text-lg">
-              The dealer operating system of Bombay Silvers — live gold & silver
-              rates, wholesale inventory, order flow, ledger, invoicing and
-              referrals. Institutional-grade. Mobile-first. India today, Dubai
-              and Monaco tomorrow.
+              The dealer operating system of Bombay Silvers — live gold & silver rates, wholesale
+              inventory, order flow, ledger, invoicing and referrals. Institutional-grade.
+              Mobile-first. India today, Dubai and Monaco tomorrow.
             </p>
             <div className="mt-8 flex flex-wrap items-center gap-3">
               <Link
@@ -117,7 +143,9 @@ function Gallery() {
               ].map(([v, l]) => (
                 <div key={l}>
                   <div className="metallic-text font-mono text-2xl font-semibold">{v}</div>
-                  <div className="mt-1 text-[11px] uppercase tracking-[0.15em] text-muted-foreground">{l}</div>
+                  <div className="mt-1 text-[11px] uppercase tracking-[0.15em] text-muted-foreground">
+                    {l}
+                  </div>
                 </div>
               ))}
             </dl>
@@ -129,10 +157,16 @@ function Gallery() {
       <section className="mx-auto max-w-6xl px-6 py-16">
         <div className="mb-10 flex items-end justify-between gap-4">
           <div>
-            <div className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground">Mockup Gallery</div>
-            <h2 className="mt-2 text-2xl font-semibold tracking-tight sm:text-3xl">Every surface of the platform</h2>
+            <div className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
+              Platform Map
+            </div>
+            <h2 className="mt-2 text-2xl font-semibold tracking-tight sm:text-3xl">
+              Every surface of the platform
+            </h2>
           </div>
-          <div className="hidden text-xs text-muted-foreground sm:block">Click any tile to open the full screen</div>
+          <div className="hidden text-xs text-muted-foreground sm:block">
+            Click any tile to open the full screen
+          </div>
         </div>
 
         <div className="space-y-12">
@@ -167,7 +201,7 @@ function Gallery() {
         </div>
 
         <footer className="mt-20 border-t border-border/60 pt-8 text-center text-xs text-muted-foreground">
-          Mockup preview · No backend wired · Bombay Silvers © {new Date().getFullYear()}
+          Bombay Silvers Dealer Terminal · Bombay Silvers © {new Date().getFullYear()}
         </footer>
       </section>
     </div>

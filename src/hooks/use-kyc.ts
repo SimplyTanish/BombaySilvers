@@ -9,16 +9,13 @@ export function useKycStatus() {
   // For the current beta:
   // active = verified
   // everything else = not verified
-  const status: KycStatus =
-    dealer?.status === "active" ? "verified" : "none";
+  const status: KycStatus = dealer?.status === "active" ? "verified" : "none";
 
   return {
-  status,
-  verified: dealer?.status === "active",
-  submitted: false,
-  needsKyc: dealer?.status !== "active",
-  label: dealer?.status === "active"
-    ? "Verified"
-    : "Not started",
-};
+    status,
+    verified: dealer?.status === "active",
+    submitted: false,
+    needsKyc: dealer?.status !== "active",
+    label: dealer?.status === "active" ? "Verified" : "Not started",
+  };
 }

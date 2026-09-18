@@ -31,8 +31,7 @@ const ref = supabaseUrl.replace(/^https?:\/\//, "").replace(".supabase.co", "");
 
 // Direct (non-pooled) connection required for DDL/migrations.
 // sslmode=require keeps certificate verification enabled.
-const connectionString =
-  `postgresql://postgres:${encodedPassword}@db.${ref}.supabase.co:5432/postgres?sslmode=require`;
+const connectionString = `postgresql://postgres:${encodedPassword}@db.${ref}.supabase.co:5432/postgres?sslmode=require`;
 
 const MIGRATIONS = [
   "supabase/migrations/20260707000001_initial_schema.sql",

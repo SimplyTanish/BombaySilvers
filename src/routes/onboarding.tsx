@@ -70,14 +70,43 @@ const REFERRAL_OPTIONS = [
 ];
 
 const INDIAN_STATES = [
-  "Andhra Pradesh", "Arunachal Pradesh", "Assam", "Bihar", "Chhattisgarh",
-  "Goa", "Gujarat", "Haryana", "Himachal Pradesh", "Jharkhand", "Karnataka",
-  "Kerala", "Madhya Pradesh", "Maharashtra", "Manipur", "Meghalaya",
-  "Mizoram", "Nagaland", "Odisha", "Punjab", "Rajasthan", "Sikkim",
-  "Tamil Nadu", "Telangana", "Tripura", "Uttar Pradesh", "Uttarakhand",
-  "West Bengal", "Delhi (NCT)", "Jammu & Kashmir", "Ladakh", "Puducherry",
-  "Chandigarh", "Andaman & Nicobar Islands", "Dadra & Nagar Haveli",
-  "Daman & Diu", "Lakshadweep",
+  "Andhra Pradesh",
+  "Arunachal Pradesh",
+  "Assam",
+  "Bihar",
+  "Chhattisgarh",
+  "Goa",
+  "Gujarat",
+  "Haryana",
+  "Himachal Pradesh",
+  "Jharkhand",
+  "Karnataka",
+  "Kerala",
+  "Madhya Pradesh",
+  "Maharashtra",
+  "Manipur",
+  "Meghalaya",
+  "Mizoram",
+  "Nagaland",
+  "Odisha",
+  "Punjab",
+  "Rajasthan",
+  "Sikkim",
+  "Tamil Nadu",
+  "Telangana",
+  "Tripura",
+  "Uttar Pradesh",
+  "Uttarakhand",
+  "West Bengal",
+  "Delhi (NCT)",
+  "Jammu & Kashmir",
+  "Ladakh",
+  "Puducherry",
+  "Chandigarh",
+  "Andaman & Nicobar Islands",
+  "Dadra & Nagar Haveli",
+  "Daman & Diu",
+  "Lakshadweep",
 ];
 
 // ─── Form state ───────────────────────────────────────────────────────────────
@@ -102,10 +131,20 @@ type FormData = {
 };
 
 const EMPTY: FormData = {
-  firmName: "", contactName: "", phone: "", email: "",
-  city: "", state: "", address: "", gstNumber: "",
-  businessType: "", primaryMetal: "", yearsInBusiness: "",
-  monthlyTurnover: "", transactionsPerMonth: "", referralSource: "",
+  firmName: "",
+  contactName: "",
+  phone: "",
+  email: "",
+  city: "",
+  state: "",
+  address: "",
+  gstNumber: "",
+  businessType: "",
+  primaryMetal: "",
+  yearsInBusiness: "",
+  monthlyTurnover: "",
+  transactionsPerMonth: "",
+  referralSource: "",
 };
 
 // ─── Component ────────────────────────────────────────────────────────────────
@@ -118,8 +157,7 @@ function Onboarding() {
   const [error, setError] = useState<string | null>(null);
   const [kycSkipped, setKycSkipped] = useState(false);
 
-  const set = (k: keyof FormData, v: string) =>
-    setForm((f) => ({ ...f, [k]: v }));
+  const set = (k: keyof FormData, v: string) => setForm((f) => ({ ...f, [k]: v }));
 
   const steps = [
     { n: 1, label: "Contact & firm" },
@@ -151,11 +189,17 @@ function Onboarding() {
     setError(null);
     if (step === 1) {
       const err = validateStep1();
-      if (err) { setError(err); return; }
+      if (err) {
+        setError(err);
+        return;
+      }
     }
     if (step === 2) {
       const err = validateStep2();
-      if (err) { setError(err); return; }
+      if (err) {
+        setError(err);
+        return;
+      }
     }
     setStep((s) => s + 1);
   };
@@ -251,8 +295,7 @@ function Onboarding() {
                   </div>
                   <span
                     className={
-                      "text-sm " +
-                      (s.n <= step ? "text-foreground" : "text-muted-foreground")
+                      "text-sm " + (s.n <= step ? "text-foreground" : "text-muted-foreground")
                     }
                   >
                     {s.label}
@@ -278,7 +321,10 @@ function Onboarding() {
             {step === 3 && (
               <Step3
                 kycSkipped={kycSkipped}
-                onSkip={() => { setKycSkipped(true); setStep(4); }}
+                onSkip={() => {
+                  setKycSkipped(true);
+                  setStep(4);
+                }}
               />
             )}
             {step === 4 && <Step4 form={form} kycSkipped={kycSkipped} />}
@@ -287,7 +333,10 @@ function Onboarding() {
             <div className="mt-8 flex items-center justify-between border-t border-border/60 pt-6">
               {step > 1 ? (
                 <button
-                  onClick={() => { setStep((s) => s - 1); setError(null); }}
+                  onClick={() => {
+                    setStep((s) => s - 1);
+                    setError(null);
+                  }}
                   className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground"
                 >
                   <ArrowLeft className="h-4 w-4" /> Back
@@ -312,7 +361,9 @@ function Onboarding() {
                   {loading ? (
                     <Loader2 className="h-4 w-4 animate-spin" />
                   ) : (
-                    <>Submit & verify <ArrowRight className="h-4 w-4" /></>
+                    <>
+                      Submit & verify <ArrowRight className="h-4 w-4" />
+                    </>
                   )}
                 </button>
               )}
@@ -329,22 +380,68 @@ function Onboarding() {
 function Step1({ form, set }: { form: FormData; set: (k: keyof FormData, v: string) => void }) {
   return (
     <>
-      <div className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground">Step 1 of 4</div>
+      <div className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
+        Step 1 of 4
+      </div>
       <h1 className="mt-2 text-2xl font-semibold tracking-tight">Contact & firm details</h1>
       <p className="mt-1 text-sm text-muted-foreground">
         Basic information about your firm and primary contact person.
       </p>
       <div className="mt-8 grid gap-5 sm:grid-cols-2">
-        <TextField label="Firm / Business name *" value={form.firmName} onChange={(v) => set("firmName", v)} placeholder="Mehta Bullion Traders" />
-        <TextField label="Proprietor / Director name *" value={form.contactName} onChange={(v) => set("contactName", v)} placeholder="Rahul K. Mehta" />
-        <TextField label="Mobile number *" value={form.phone} onChange={(v) => set("phone", v)} placeholder="98765 43210" type="tel" hint="+91 prefix added automatically" />
-        <TextField label="Email address *" value={form.email} onChange={(v) => set("email", v)} placeholder="rahul@mehtabullion.in" type="email" />
-        <TextField label="City" value={form.city} onChange={(v) => set("city", v)} placeholder="Surat" />
-        <SelectField label="State *" value={form.state} onChange={(v) => set("state", v)} options={INDIAN_STATES} placeholder="Select state" />
+        <TextField
+          label="Firm / Business name *"
+          value={form.firmName}
+          onChange={(v) => set("firmName", v)}
+          placeholder="Mehta Bullion Traders"
+        />
+        <TextField
+          label="Proprietor / Director name *"
+          value={form.contactName}
+          onChange={(v) => set("contactName", v)}
+          placeholder="Rahul K. Mehta"
+        />
+        <TextField
+          label="Mobile number *"
+          value={form.phone}
+          onChange={(v) => set("phone", v)}
+          placeholder="98765 43210"
+          type="tel"
+          hint="+91 prefix added automatically"
+        />
+        <TextField
+          label="Email address *"
+          value={form.email}
+          onChange={(v) => set("email", v)}
+          placeholder="rahul@mehtabullion.in"
+          type="email"
+        />
+        <TextField
+          label="City"
+          value={form.city}
+          onChange={(v) => set("city", v)}
+          placeholder="Surat"
+        />
+        <SelectField
+          label="State *"
+          value={form.state}
+          onChange={(v) => set("state", v)}
+          options={INDIAN_STATES}
+          placeholder="Select state"
+        />
         <div className="sm:col-span-2">
-          <TextArea label="Registered / warehouse address" value={form.address} onChange={(v) => set("address", v)} placeholder="14, Zaveri Bazaar, Mahidharpura, Surat 395003" />
+          <TextArea
+            label="Registered / warehouse address"
+            value={form.address}
+            onChange={(v) => set("address", v)}
+            placeholder="14, Zaveri Bazaar, Mahidharpura, Surat 395003"
+          />
         </div>
-        <TextField label="GST number" value={form.gstNumber} onChange={(v) => set("gstNumber", v)} placeholder="24AAECM1234K1Z9 (optional)" />
+        <TextField
+          label="GST number"
+          value={form.gstNumber}
+          onChange={(v) => set("gstNumber", v)}
+          placeholder="24AAECM1234K1Z9 (optional)"
+        />
       </div>
     </>
   );
@@ -355,18 +452,56 @@ function Step1({ form, set }: { form: FormData; set: (k: keyof FormData, v: stri
 function Step2({ form, set }: { form: FormData; set: (k: keyof FormData, v: string) => void }) {
   return (
     <>
-      <div className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground">Step 2 of 4</div>
+      <div className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
+        Step 2 of 4
+      </div>
       <h1 className="mt-2 text-2xl font-semibold tracking-tight">Business profile</h1>
       <p className="mt-1 text-sm text-muted-foreground">
         Helps us set your credit limits and inventory access tier.
       </p>
       <div className="mt-8 grid gap-5 sm:grid-cols-2">
-        <SelectField label="Business type *" value={form.businessType} onChange={(v) => set("businessType", v)} options={BUSINESS_TYPES} placeholder="Select type" />
-        <SelectField label="Primary metal focus *" value={form.primaryMetal} onChange={(v) => set("primaryMetal", v)} options={PRIMARY_METALS} placeholder="Select metal" />
-        <SelectField label="Years in business *" value={form.yearsInBusiness} onChange={(v) => set("yearsInBusiness", v)} options={YEARS_OPTIONS} placeholder="Select range" />
-        <SelectField label="Monthly turnover (approx.) *" value={form.monthlyTurnover} onChange={(v) => set("monthlyTurnover", v)} options={TURNOVER_OPTIONS} placeholder="Select range" />
-        <SelectField label="Transactions per month" value={form.transactionsPerMonth} onChange={(v) => set("transactionsPerMonth", v)} options={TXN_OPTIONS} placeholder="Select range" />
-        <SelectField label="How did you hear about us?" value={form.referralSource} onChange={(v) => set("referralSource", v)} options={REFERRAL_OPTIONS} placeholder="Select" />
+        <SelectField
+          label="Business type *"
+          value={form.businessType}
+          onChange={(v) => set("businessType", v)}
+          options={BUSINESS_TYPES}
+          placeholder="Select type"
+        />
+        <SelectField
+          label="Primary metal focus *"
+          value={form.primaryMetal}
+          onChange={(v) => set("primaryMetal", v)}
+          options={PRIMARY_METALS}
+          placeholder="Select metal"
+        />
+        <SelectField
+          label="Years in business *"
+          value={form.yearsInBusiness}
+          onChange={(v) => set("yearsInBusiness", v)}
+          options={YEARS_OPTIONS}
+          placeholder="Select range"
+        />
+        <SelectField
+          label="Monthly turnover (approx.) *"
+          value={form.monthlyTurnover}
+          onChange={(v) => set("monthlyTurnover", v)}
+          options={TURNOVER_OPTIONS}
+          placeholder="Select range"
+        />
+        <SelectField
+          label="Transactions per month"
+          value={form.transactionsPerMonth}
+          onChange={(v) => set("transactionsPerMonth", v)}
+          options={TXN_OPTIONS}
+          placeholder="Select range"
+        />
+        <SelectField
+          label="How did you hear about us?"
+          value={form.referralSource}
+          onChange={(v) => set("referralSource", v)}
+          options={REFERRAL_OPTIONS}
+          placeholder="Select"
+        />
       </div>
     </>
   );
@@ -386,10 +521,13 @@ const KYC_DOCS = [
 function Step3({ kycSkipped, onSkip }: { kycSkipped: boolean; onSkip: () => void }) {
   return (
     <>
-      <div className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground">Step 3 of 4</div>
+      <div className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
+        Step 3 of 4
+      </div>
       <h1 className="mt-2 text-2xl font-semibold tracking-tight">KYC & documents</h1>
       <p className="mt-1 text-sm text-muted-foreground">
-        Upload statutory documents for compliance. You can skip this now and complete it later — but KYC is required for orders, ledger access, and other major features.
+        Upload statutory documents for compliance. You can skip this now and complete it later — but
+        KYC is required for orders, ledger access, and other major features.
       </p>
 
       <div className="mt-6 space-y-2">
@@ -414,7 +552,9 @@ function Step3({ kycSkipped, onSkip }: { kycSkipped: boolean; onSkip: () => void
           <Upload className="h-5 w-5 text-[var(--platinum)]" />
         </div>
         <div className="mt-3 text-sm">Drop documents here or click to upload</div>
-        <div className="mt-1 text-xs text-muted-foreground">PDF, JPG, PNG · up to 10 MB each · encrypted at rest</div>
+        <div className="mt-1 text-xs text-muted-foreground">
+          PDF, JPG, PNG · up to 10 MB each · encrypted at rest
+        </div>
       </div>
 
       {/* Skip option */}
@@ -424,7 +564,8 @@ function Step3({ kycSkipped, onSkip }: { kycSkipped: boolean; onSkip: () => void
             {kycSkipped ? "✓ Skipped — you can complete KYC later in Settings" : "Skip KYC for now"}
           </div>
           <div className="mt-0.5 text-xs text-muted-foreground">
-            You'll still be able to browse the terminal, but placing orders, viewing the ledger, and certain other features require KYC.
+            You'll still be able to browse the terminal, but placing orders, viewing the ledger, and
+            certain other features require KYC.
           </div>
         </div>
         {!kycSkipped && (
@@ -459,10 +600,13 @@ function Step4({ form, kycSkipped }: { form: FormData; kycSkipped: boolean }) {
 
   return (
     <>
-      <div className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground">Step 4 of 4</div>
+      <div className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
+        Step 4 of 4
+      </div>
       <h1 className="mt-2 text-2xl font-semibold tracking-tight">Review & submit</h1>
       <p className="mt-1 text-sm text-muted-foreground">
-        Confirm your details. You'll receive a 6-digit verification code at <strong>{form.email}</strong>.
+        Confirm your details. You'll receive a 6-digit verification code at{" "}
+        <strong>{form.email}</strong>.
       </p>
 
       <div className="mt-8 divide-y divide-border/60 rounded-xl border border-border/60 bg-[var(--surface-2)]/40">
@@ -475,7 +619,8 @@ function Step4({ form, kycSkipped }: { form: FormData; kycSkipped: boolean }) {
       </div>
 
       <div className="mt-6 rounded-xl border border-border/60 bg-[var(--surface-2)]/40 p-4 text-xs text-muted-foreground">
-        By submitting, you agree to Bombay Silvers' dealer terms and confirm that all information provided is accurate.
+        By submitting, you agree to Bombay Silvers' dealer terms and confirm that all information
+        provided is accurate.
       </div>
     </>
   );
@@ -484,11 +629,19 @@ function Step4({ form, kycSkipped }: { form: FormData; kycSkipped: boolean }) {
 // ─── Form primitives ──────────────────────────────────────────────────────────
 
 function TextField({
-  label, value, onChange, placeholder, type = "text", hint
+  label,
+  value,
+  onChange,
+  placeholder,
+  type = "text",
+  hint,
 }: {
-  label: string; value: string;
+  label: string;
+  value: string;
   onChange: (v: string) => void;
-  placeholder?: string; type?: string; hint?: string;
+  placeholder?: string;
+  type?: string;
+  hint?: string;
 }) {
   return (
     <div>
@@ -508,9 +661,15 @@ function TextField({
 }
 
 function TextArea({
-  label, value, onChange, placeholder,
+  label,
+  value,
+  onChange,
+  placeholder,
 }: {
-  label: string; value: string; onChange: (v: string) => void; placeholder?: string;
+  label: string;
+  value: string;
+  onChange: (v: string) => void;
+  placeholder?: string;
 }) {
   return (
     <div>
@@ -529,10 +688,17 @@ function TextArea({
 }
 
 function SelectField({
-  label, value, onChange, options, placeholder,
+  label,
+  value,
+  onChange,
+  options,
+  placeholder,
 }: {
-  label: string; value: string; onChange: (v: string) => void;
-  options: string[]; placeholder?: string;
+  label: string;
+  value: string;
+  onChange: (v: string) => void;
+  options: string[];
+  placeholder?: string;
 }) {
   return (
     <div>
@@ -543,7 +709,11 @@ function SelectField({
         value={value}
         onChange={(e) => onChange(e.target.value)}
         className="h-11 w-full rounded-xl border border-border/70 bg-[var(--surface-2)] px-3 text-sm outline-none focus:border-[var(--silver-muted)] appearance-none cursor-pointer"
-        style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%236b7280' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E")`, backgroundRepeat: "no-repeat", backgroundPosition: "right 12px center" }}
+        style={{
+          backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%236b7280' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E")`,
+          backgroundRepeat: "no-repeat",
+          backgroundPosition: "right 12px center",
+        }}
       >
         {placeholder && (
           <option value="" disabled>

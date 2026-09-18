@@ -2,11 +2,7 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { BrandMark } from "@/components/AppShell";
 import { ShieldCheck, ArrowRight, Loader2, Mail } from "lucide-react";
-import {
-  InputOTP,
-  InputOTPGroup,
-  InputOTPSlot,
-} from "@/components/ui/input-otp";
+import { InputOTP, InputOTPGroup, InputOTPSlot } from "@/components/ui/input-otp";
 import { supabase } from "@/lib/supabase";
 import { saveDealerProfile } from "@/lib/auth-fns";
 
@@ -26,10 +22,8 @@ function maskEmail(email: string): string {
   const [local, domain] = email.split("@");
   if (!domain || local.length < 2) return email;
   const [domainName, ...rest] = domain.split(".");
-  const maskedLocal =
-    local[0] + "*".repeat(Math.max(local.length - 2, 1)) + local.slice(-1);
-  const maskedDomain =
-    domainName[0] + "*".repeat(Math.max(domainName.length - 1, 1));
+  const maskedLocal = local[0] + "*".repeat(Math.max(local.length - 2, 1)) + local.slice(-1);
+  const maskedDomain = domainName[0] + "*".repeat(Math.max(domainName.length - 1, 1));
   return `${maskedLocal}@${maskedDomain}.${rest.join(".")}`;
 }
 
@@ -132,15 +126,12 @@ function OTP() {
             One-time code sent
           </div>
 
-          <h1 className="mt-4 text-2xl font-semibold tracking-tight">
-            Enter 6-digit code
-          </h1>
+          <h1 className="mt-4 text-2xl font-semibold tracking-tight">Enter 6-digit code</h1>
 
           <div className="mt-1 flex items-start gap-2 text-sm text-muted-foreground">
             <Mail className="mt-0.5 h-4 w-4 shrink-0 text-[var(--platinum)]" />
             <span>
-              We emailed a code to{" "}
-              <span className="font-mono text-foreground">{displayEmail}</span>
+              We emailed a code to <span className="font-mono text-foreground">{displayEmail}</span>
               {displayPhone && (
                 <span className="ml-1 text-muted-foreground">
                   (account linked to {displayPhone})
@@ -220,9 +211,7 @@ function OTP() {
               <span>Auth method</span>
               <span className="text-right text-foreground">Email OTP</span>
               <span>Trust device</span>
-              <span className="text-right text-foreground">
-                {trust ? "Yes · 30 days" : "No"}
-              </span>
+              <span className="text-right text-foreground">{trust ? "Yes · 30 days" : "No"}</span>
               <span>Expires</span>
               <span className="text-right text-foreground">in 8 hours</span>
             </div>

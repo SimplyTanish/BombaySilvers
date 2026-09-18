@@ -11,9 +11,7 @@ export function AccessDenied() {
 
         <h1 className="text-3xl font-bold">403</h1>
 
-        <h2 className="mt-2 text-lg font-semibold">
-          Access Denied
-        </h2>
+        <h2 className="mt-2 text-lg font-semibold">Access Denied</h2>
 
         <p className="mt-3 text-sm text-muted-foreground">
           You don't have permission to access this page.

@@ -58,8 +58,7 @@ async function runQuery(sql) {
   }
 
   if (!res.ok) {
-    const message =
-      (body && (body.message || body.error || body.msg)) || text || res.statusText;
+    const message = (body && (body.message || body.error || body.msg)) || text || res.statusText;
     throw new Error(`HTTP ${res.status}: ${message}`);
   }
 

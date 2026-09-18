@@ -24,10 +24,22 @@ async function main() {
 
   // 1. Verify tables exist
   const tables = [
-    "users", "firms", "dealers", "kyc_documents",
-    "warehouses", "products", "inventory", "inventory_transactions",
-    "orders", "order_items", "invoices", "ledger_entries",
-    "referrals", "notifications", "sessions", "audit_logs",
+    "users",
+    "firms",
+    "dealers",
+    "kyc_documents",
+    "warehouses",
+    "products",
+    "inventory",
+    "inventory_transactions",
+    "orders",
+    "order_items",
+    "invoices",
+    "ledger_entries",
+    "referrals",
+    "notifications",
+    "sessions",
+    "audit_logs",
   ];
 
   let allOk = true;
@@ -43,8 +55,10 @@ async function main() {
 
   // 2. Verify helper functions exist
   const functions = [
-    "get_my_role", "get_my_dealer_id",
-    "generate_order_number", "generate_invoice_number",
+    "get_my_role",
+    "get_my_dealer_id",
+    "generate_order_number",
+    "generate_invoice_number",
     "generate_referral_code",
   ];
   for (const fn of functions) {
@@ -67,4 +81,7 @@ async function main() {
   }
 }
 
-main().catch((e) => { console.error(e); process.exit(1); });
+main().catch((e) => {
+  console.error(e);
+  process.exit(1);
+});
