@@ -1,10 +1,10 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { AppShell, GlassCard, PageTitle } from "@/components/AppShell";
 import { Bar, BarChart, ResponsiveContainer, XAxis, YAxis, Tooltip } from "recharts";
 import { Download, TrendingUp, Loader2 } from "lucide-react";
 import { KycGate } from "@/components/KycGate";
-import { useLedgerEntries, useLedgerSummary } from "@/hooks/use-ledger";
+import { useLedgerEntries, useLedgerSummary, type LedgerEntry } from "@/hooks/use-ledger";
 import { useAuth } from "@/hooks/use-auth";
 import { fmtINR } from "@/lib/rates";
 
@@ -17,8 +17,22 @@ function Ledger() {
   const { dealer } = useAuth();
   const { data: entries, isLoading, isError } = useLedgerEntries();
   const { data: summary } = useLedgerSummary();
+  const [exporting, setExporting] = useState(false);
 
   const byMonth = useMemoMonthlyBreakdown(entries ?? []);
+
+  const exportStatement = async () => {
+    setExporting(true);
+    try {
+      await downloadLedgerStatement(entries ?? [], {
+        dealerCode: dealer?.dealer_code ?? "—",
+        outstanding: summary?.outstanding ?? 0,
+        creditLimit: summary?.creditLimit ?? 0,
+      });
+    } finally {
+      setExporting(false);
+    }
+  };
 
   return (
     <AppShell>
@@ -26,8 +40,17 @@ function Ledger() {
         title="Ledger"
         subtitle={dealer?.dealer_code ? `A/c ${dealer.dealer_code}` : "Your account"}
         actions={
-          <button className="inline-flex h-9 items-center gap-2 rounded-xl border border-border/70 bg-[var(--surface-2)] px-4 text-sm hover:bg-[var(--surface-3)]">
-            <Download className="h-4 w-4" /> Statement PDF
+          <button
+            onClick={() => void exportStatement()}
+            disabled={exporting || isLoading || (entries ?? []).length === 0}
+            className="inline-flex h-9 items-center gap-2 rounded-xl border border-border/70 bg-[var(--surface-2)] px-4 text-sm hover:bg-[var(--surface-3)] disabled:opacity-50"
+          >
+            {exporting ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <Download className="h-4 w-4" />
+            )}
+            Statement PDF
           </button>
         }
       />
@@ -210,4 +233,98 @@ function useMemoMonthlyBreakdown(
     }
     return Array.from(buckets.entries()).map(([m, v]) => ({ m, ...v }));
   }, [entries]);
+}
+
+const money = (value: number) =>
+  `₹${new Intl.NumberFormat("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(value)}`;
+
+async function downloadLedgerStatement(
+  entries: LedgerEntry[],
+  meta: { dealerCode: string; outstanding: number; creditLimit: number },
+) {
+  const { jsPDF } = await import("jspdf");
+  const pdf = new jsPDF({ unit: "mm", format: "a4" });
+  const width = pdf.internal.pageSize.getWidth();
+
+  pdf.setFillColor(24, 24, 27);
+  pdf.rect(0, 0, width, 30, "F");
+  pdf.setTextColor(242, 242, 244);
+  pdf.setFont("helvetica", "bold");
+  pdf.setFontSize(20);
+  pdf.text("BOMBAY SILVERS", 16, 14);
+  pdf.setFont("helvetica", "normal");
+  pdf.setFontSize(8);
+  pdf.text("Dealer Terminal · Est. 1984", 16, 19);
+  pdf.setFontSize(10);
+  pdf.text("LEDGER STATEMENT", width - 16, 14, { align: "right" });
+  pdf.setFontSize(8);
+  pdf.text(`A/c ${meta.dealerCode}`, width - 16, 19, { align: "right" });
+
+  pdf.setTextColor(24, 24, 27);
+  pdf.setFontSize(10);
+  pdf.setFont("helvetica", "bold");
+  pdf.text("STATEMENT PERIOD", 16, 42);
+  pdf.text("SUMMARY", width / 2 + 8, 42);
+  pdf.setFont("helvetica", "normal");
+  pdf.setFontSize(9);
+  pdf.text("All recorded transactions to date", 16, 47);
+  pdf.text(`Outstanding: ${money(meta.outstanding)}`, width / 2 + 8, 47);
+  pdf.text(
+    `Credit limit: ${meta.creditLimit > 0 ? money(meta.creditLimit) : "Not set"}`,
+    width / 2 + 8,
+    52,
+  );
+
+  const top = 62;
+  pdf.setFillColor(235, 235, 238);
+  pdf.rect(16, top, width - 32, 8, "F");
+  pdf.setFont("helvetica", "bold");
+  pdf.setFontSize(8);
+  pdf.text("DATE", 19, top + 5.3);
+  pdf.text("DESCRIPTION", 60, top + 5.3);
+  pdf.text("TYPE", 118, top + 5.3);
+  pdf.text("AMOUNT", 148, top + 5.3, { align: "right" });
+  pdf.text("BALANCE", width - 19, top + 5.3, { align: "right" });
+
+  let y = top + 13;
+  pdf.setFont("helvetica", "normal");
+  for (const e of entries) {
+    if (y > 270) {
+      pdf.addPage();
+      y = 20;
+    }
+    const date = new Intl.DateTimeFormat("en-IN", {
+      day: "2-digit",
+      month: "short",
+      year: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit",
+    }).format(new Date(e.created_at));
+    pdf.setFontSize(8);
+    pdf.text(date, 19, y);
+    const description = pdf.splitTextToSize(e.description, 55);
+    pdf.text(description, 60, y);
+    pdf.text(e.entry_type === "credit" ? "Credit" : "Debit", 118, y);
+    pdf.text(money(e.amount), 148, y, { align: "right" });
+    pdf.text(money(e.balance_after), width - 19, y, { align: "right" });
+    pdf.setDrawColor(225, 225, 228);
+    pdf.line(16, y + 2.5, width - 16, y + 2.5);
+    y += 8;
+  }
+
+  if (entries.length === 0) {
+    pdf.setFontSize(9);
+    pdf.text("No transactions recorded.", 16, y + 4);
+  }
+
+  pdf.setFontSize(7);
+  pdf.setTextColor(105, 105, 112);
+  pdf.text(
+    "This is a system-generated statement from Bombay Silvers. For queries, contact support@bombaysilvers.com.",
+    width / 2,
+    285,
+    { align: "center" },
+  );
+
+  pdf.save(`bombay-silvers-ledger-${meta.dealerCode || "statement"}.pdf`);
 }
