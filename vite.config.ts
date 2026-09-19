@@ -91,7 +91,10 @@ export default defineConfig({
         devOptions: {
           enabled: true,
           type: "module",
-          navigateFallback: "/",
+          // NOTE: no navigateFallback here on purpose. The dev SW has no
+          // precache entry for "/", so a fallback route throws Workbox
+          // "non-precached-url" in the console on every navigation. The dev
+          // server SSR handles deep links without a SW fallback.
         },
       }),
     ],
