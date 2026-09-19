@@ -346,14 +346,15 @@ export function AppShell({ children }: { children: ReactNode }) {
     }
   }, [loading, session, navigate]);
 
-  // First-run welcome tour — opens once per browser the first time the
-  // terminal is entered. Replayable anytime via the language menu.
+  // First-run welcome tour — opens the first time each *user* enters the
+  // terminal, so every new registration walks the tour even on a shared device.
+  // Replayable anytime via the language menu.
   useEffect(() => {
     if (loading || !session) return;
     if (typeof window === "undefined") return;
-    const seen = window.localStorage.getItem("bs_tour_seen");
-    if (!seen) {
-      window.localStorage.setItem("bs_tour_seen", "1");
+    const key = `bs_tour_seen_${session.user.id}`;
+    if (!window.localStorage.getItem(key)) {
+      window.localStorage.setItem(key, "1");
       setTutorialOpen(true);
     }
   }, [loading, session]);
