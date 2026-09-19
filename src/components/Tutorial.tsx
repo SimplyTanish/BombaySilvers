@@ -1,12 +1,27 @@
 import { useState } from "react";
-import { Languages, Info, ChevronRight, ChevronLeft, X, Check } from "lucide-react";
+import {
+  Languages,
+  Info,
+  ChevronRight,
+  ChevronLeft,
+  X,
+  Check,
+  LineChart,
+  ScrollText,
+  Boxes,
+  Wallet,
+  Receipt,
+  Gift,
+  Bell,
+} from "lucide-react";
 import { useLanguage } from "@/hooks/use-language";
 import { LANGUAGES } from "@/lib/i18n";
 
 const STEPS = [
   {
     icon: Info,
-    title: (t: (k: string, f?: string) => string) => t("tut.welcomeTitle", "Welcome to Bombay Silvers"),
+    title: (t: (k: string, f?: string) => string) =>
+      t("tut.welcomeTitle", "Welcome to Bombay Silvers"),
     body: (t: (k: string, f?: string) => string) =>
       t(
         "tut.welcomeBody",
@@ -20,6 +35,80 @@ const STEPS = [
       t(
         "tut.langBody",
         "Tap the language menu to switch between 9 Indian languages. Your choice is remembered on this device.",
+      ),
+  },
+  {
+    icon: LineChart,
+    title: (t: (k: string, f?: string) => string) =>
+      t("tut.dashboardTitle", "Dashboard & live rates"),
+    body: (t: (k: string, f?: string) => string) =>
+      t(
+        "tut.dashboardBody",
+        "Gold and silver tick live while the MCX market is open (Mon–Fri 09:00–23:30 IST). When it's closed the header shows when it reopens.",
+      ),
+  },
+  {
+    icon: ScrollText,
+    title: (t: (k: string, f?: string) => string) => t("tut.ordersTitle", "Orders"),
+    body: (t: (k: string, f?: string) => string) =>
+      t(
+        "tut.ordersBody",
+        "Place bullion orders at live or locked rates, then track each order from confirmation to dispatch and delivery.",
+      ),
+  },
+  {
+    icon: Wallet,
+    title: (t: (k: string, f?: string) => string) => t("tut.ledgerTitle", "Ledger & statement"),
+    body: (t: (k: string, f?: string) => string) =>
+      t(
+        "tut.ledgerBody",
+        "Your outstanding balance, credit limit and every transaction. Download a signed statement PDF anytime.",
+      ),
+  },
+  {
+    icon: Boxes,
+    title: (t: (k: string, f?: string) => string) => t("tut.inventoryTitle", "Inventory"),
+    body: (t: (k: string, f?: string) => string) =>
+      t(
+        "tut.inventoryBody",
+        "See live stock across vaults, reserve quantity for a customer, and preview how much your holdings are worth.",
+      ),
+  },
+  {
+    icon: Receipt,
+    title: (t: (k: string, f?: string) => string) => t("tut.invoicesTitle", "Invoices"),
+    body: (t: (k: string, f?: string) => string) =>
+      t(
+        "tut.invoicesBody",
+        "GST-compliant invoices are generated automatically for every order — view and download PDFs for your books.",
+      ),
+  },
+  {
+    icon: Gift,
+    title: (t: (k: string, f?: string) => string) => t("tut.referralsTitle", "Referral programme"),
+    body: (t: (k: string, f?: string) => string) =>
+      t(
+        "tut.referralsBody",
+        "Invite fellow bullion dealers and earn commission once they complete KYC and place their first order.",
+      ),
+  },
+  {
+    icon: Bell,
+    title: (t: (k: string, f?: string) => string) => t("tut.alertsTitle", "Alerts & notifications"),
+    body: (t: (k: string, f?: string) => string) =>
+      t(
+        "tut.alertsBody",
+        "Set price alerts on gold or silver and get notified in-app when your target is hit.",
+      ),
+  },
+  {
+    icon: Info,
+    title: (t: (k: string, f?: string) => string) =>
+      t("tut.kycTitle", "Unlock everything with KYC"),
+    body: (t: (k: string, f?: string) => string) =>
+      t(
+        "tut.kycBody",
+        "Orders, ledger, invoices and referrals unlock once your KYC documents are verified. Replay this tour anytime from the language menu.",
       ),
   },
 ];
@@ -76,13 +165,7 @@ export function LanguageMenuButton({ onOpenTutorial }: { onOpenTutorial: () => v
   );
 }
 
-export function TutorialDialog({
-  open,
-  onClose,
-}: {
-  open: boolean;
-  onClose: () => void;
-}) {
+export function TutorialDialog({ open, onClose }: { open: boolean; onClose: () => void }) {
   const { t } = useLanguage();
   const [step, setStep] = useState(0);
 
@@ -113,7 +196,8 @@ export function TutorialDialog({
               <span
                 key={i}
                 className={
-                  "h-1.5 w-6 rounded-full " + (i === step ? "bg-[var(--platinum)]" : "bg-[var(--surface-3)]")
+                  "h-1.5 w-6 rounded-full " +
+                  (i === step ? "bg-[var(--platinum)]" : "bg-[var(--surface-3)]")
                 }
               />
             ))}

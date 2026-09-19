@@ -16,6 +16,7 @@ import {
   Clock,
 } from "lucide-react";
 import { useLiveRates } from "@/hooks/use-live-rates";
+import { useMarketStatus } from "@/lib/market";
 import { useNotifications } from "@/hooks/use-notifications";
 import {
   inventoryValue,
@@ -97,6 +98,7 @@ function formatDateTime(date: Date): string {
 function Dashboard() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const market = useMarketStatus();
   const { data, isLoading, isError, error, isFetching, refetch, dataUpdatedAt } = useLiveRates();
   const { data: notifications } = useNotifications();
   const { data: stock = [] } = useInventory();
@@ -145,7 +147,11 @@ function Dashboard() {
     <AppShell>
       <PageTitle
         title="Good morning."
-        subtitle="Rates update every 5 minutes · MCX Mumbai"
+        subtitle={
+          market.open
+            ? "Live MCX rates · refresh every 30 seconds"
+            : `Market closed · reopens ${market.nextOpenLabel ?? "Mon 09:00"} IST`
+        }
         actions={
           <>
             {data && !isError ? (

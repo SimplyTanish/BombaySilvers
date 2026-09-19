@@ -34,6 +34,8 @@ const en: StrDict = {
   "app.language": "Language",
   "app.tutorial": "App tutorial",
   "misc.marketOpen": "Market Open",
+  "misc.marketClosed": "Market closed",
+  "misc.opensAt": "opens",
 };
 
 const hi: StrDict = {
@@ -56,6 +58,8 @@ const hi: StrDict = {
   "app.language": "भाषा",
   "app.tutorial": "ऐप ट्यूटोरियल",
   "misc.marketOpen": "बाजार खुला",
+  "misc.marketClosed": "बाजार बंद",
+  "misc.opensAt": "खुलेगा",
 };
 
 const mr: StrDict = {
@@ -78,6 +82,8 @@ const mr: StrDict = {
   "app.language": "भाषा",
   "app.tutorial": "ॲप ट्युटोरियल",
   "misc.marketOpen": "बाजार खुले",
+  "misc.marketClosed": "बाजार बंद",
+  "misc.opensAt": "उघडेल",
 };
 
 const gu: StrDict = {
@@ -100,6 +106,8 @@ const gu: StrDict = {
   "app.language": "ભાષા",
   "app.tutorial": "એપ ટ્યુટોરિયલ",
   "misc.marketOpen": "બજાર ખુલ્લું",
+  "misc.marketClosed": "બજાર બંધ",
+  "misc.opensAt": "ખુલશે",
 };
 
 const ta: StrDict = {
@@ -122,6 +130,8 @@ const ta: StrDict = {
   "app.language": "மொழி",
   "app.tutorial": "ஆப் பயிற்சி",
   "misc.marketOpen": "சந்தை திறந்தது",
+  "misc.marketClosed": "சந்தை மூடப்பட்டது",
+  "misc.opensAt": "திறக்கும்",
 };
 
 const te: StrDict = {
@@ -144,6 +154,8 @@ const te: StrDict = {
   "app.language": "భాష",
   "app.tutorial": "యాప్ ట్యుటోరియల్",
   "misc.marketOpen": "మార్కెట్ తెరిచి ఉంది",
+  "misc.marketClosed": "మార్కెట్ మూసివేయబడింది",
+  "misc.opensAt": "తెరవబడుతుంది",
 };
 
 const kn: StrDict = {
@@ -166,6 +178,8 @@ const kn: StrDict = {
   "app.language": "ಭಾಷೆ",
   "app.tutorial": "ಅಪ್ಲಿಕೇಶನ್ ಟ್ಯುಟೋರಿಯಲ್",
   "misc.marketOpen": "ಮಾರುಕಟ್ಟೆ ತೆರೆದಿದೆ",
+  "misc.marketClosed": "ಮಾರುಕಟ್ಟೆ ಮುಚ್ಚಿದೆ",
+  "misc.opensAt": "ತೆರೆಯುತ್ತದೆ",
 };
 
 const bn: StrDict = {
@@ -188,6 +202,8 @@ const bn: StrDict = {
   "app.language": "ভাষা",
   "app.tutorial": "অ্যাপ টিউটোরিয়াল",
   "misc.marketOpen": "বাজার খোলা",
+  "misc.marketClosed": "বাজার বন্ধ",
+  "misc.opensAt": "খুলবে",
 };
 
 const pa: StrDict = {
@@ -210,6 +226,8 @@ const pa: StrDict = {
   "app.language": "ਭਾਸ਼ਾ",
   "app.tutorial": "ਐਪ ਟਿਊਟੋਰੀਅਲ",
   "misc.marketOpen": "ਬਾਜ਼ਾਰ ਖੁੱਲ੍ਹਾ",
+  "misc.marketClosed": "ਬਾਜ਼ਾਰ ਬੰਦ",
+  "misc.opensAt": "ਖੁੱਲੇਗਾ",
 };
 
 const dicts: Record<LanguageCode, StrDict> = { en, hi, mr, gu, ta, te, kn, bn, pa };

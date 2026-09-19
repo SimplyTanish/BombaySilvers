@@ -19,6 +19,7 @@ import {
 import { NotificationCenter } from "@/components/NotificationCenter";
 import { useAuth } from "@/hooks/use-auth";
 import { useLiveRates } from "@/hooks/use-live-rates";
+import { useMarketStatus } from "@/lib/market";
 import { useLanguage } from "@/hooks/use-language";
 import { LanguageMenuButton, TutorialDialog } from "@/components/Tutorial";
 import { fmtINR, fmtChange } from "@/lib/rates";
@@ -114,10 +115,17 @@ export function RateTicker() {
   );
 }
 
-export function LiveDot({ label = "LIVE" }: { label?: string }) {
+export function LiveDot({ label = "LIVE", open = true }: { label?: string; open?: boolean }) {
   return (
     <span className="inline-flex items-center gap-1.5 rounded-full border border-border/70 bg-[var(--surface-2)] px-2 py-0.5 font-mono text-[10px] uppercase tracking-[0.15em] text-muted-foreground">
-      <span className="h-1.5 w-1.5 rounded-full bg-[var(--gain)] shadow-[0_0_8px_var(--gain)] [animation:pulse-dot_1.6s_ease-in-out_infinite]" />
+      <span
+        className={
+          "h-1.5 w-1.5 rounded-full " +
+          (open
+            ? "bg-[var(--gain)] shadow-[0_0_8px_var(--gain)] [animation:pulse-dot_1.6s_ease-in-out_infinite]"
+            : "bg-[var(--silver)]")
+        }
+      />
       {label}
     </span>
   );
@@ -239,7 +247,9 @@ function SidebarNav({
             </div>
             <div className="min-w-0 flex-1">
               <div className="truncate text-sm font-medium">{displayName}</div>
-              <div className="truncate text-[11px] text-muted-foreground">{t("nav.dealerAccount")}</div>
+              <div className="truncate text-[11px] text-muted-foreground">
+                {t("nav.dealerAccount")}
+              </div>
             </div>
           </div>
         </div>
@@ -263,6 +273,10 @@ function Topbar({
   onOpenTutorial: () => void;
 }) {
   const { t } = useLanguage();
+  const market = useMarketStatus();
+  const marketLabel = market.open
+    ? t("misc.marketOpen")
+    : `${t("misc.marketClosed")}${market.nextOpenLabel ? " · " + t("misc.opensAt") + " " + market.nextOpenLabel : ""}`;
   return (
     <div className="sticky top-0 z-20 border-b border-border/60 bg-background/70 backdrop-blur-xl">
       <div className="flex items-center gap-3 px-4 py-3 lg:px-6">
@@ -276,7 +290,7 @@ function Topbar({
         <div className="lg:hidden">
           <BrandMark compact />
         </div>
-        <LiveDot label={t("misc.marketOpen")} />
+        <LiveDot label={marketLabel} open={market.open} />
         <div className="ml-auto flex items-center gap-2">
           <LanguageMenuButton onOpenTutorial={onOpenTutorial} />
           <NotificationCenter />
@@ -331,6 +345,18 @@ export function AppShell({ children }: { children: ReactNode }) {
       navigate({ to: "/login" });
     }
   }, [loading, session, navigate]);
+
+  // First-run welcome tour — opens once per browser the first time the
+  // terminal is entered. Replayable anytime via the language menu.
+  useEffect(() => {
+    if (loading || !session) return;
+    if (typeof window === "undefined") return;
+    const seen = window.localStorage.getItem("bs_tour_seen");
+    if (!seen) {
+      window.localStorage.setItem("bs_tour_seen", "1");
+      setTutorialOpen(true);
+    }
+  }, [loading, session]);
 
   const handleSignOut = async () => {
     await signOut();

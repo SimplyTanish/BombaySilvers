@@ -148,9 +148,11 @@ function OTP() {
     setResending(false);
     if (resendErr) {
       setCountdown(60);
-      setError(resendErr.message && resendErr.message !== "{}"
-        ? resendErr.message
-        : "Too many requests — please wait a minute and try again.");
+      setError(
+        resendErr.message && resendErr.message !== "{}"
+          ? resendErr.message
+          : "Too many requests — please wait a minute and try again.",
+      );
       return;
     }
     setCountdown(60);

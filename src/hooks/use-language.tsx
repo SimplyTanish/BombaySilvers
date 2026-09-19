@@ -31,7 +31,9 @@ export function LanguageProvider({ children }: { children: ReactNode }) {
   const page = (key: string, fallback?: string) => t(lang, key, fallback);
 
   return (
-    <LanguageContext.Provider value={{ lang, setLang, t: page }}>{children}</LanguageContext.Provider>
+    <LanguageContext.Provider value={{ lang, setLang, t: page }}>
+      {children}
+    </LanguageContext.Provider>
   );
 }
 

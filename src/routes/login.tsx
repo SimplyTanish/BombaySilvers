@@ -69,7 +69,11 @@ function Login() {
       return;
     }
 
-    if (otp) sessionStorage.setItem("demo_otp", JSON.stringify({ otp, flow: "login", email: result.email }));
+    if (otp)
+      sessionStorage.setItem(
+        "demo_otp",
+        JSON.stringify({ otp, flow: "login", email: result.email }),
+      );
 
     navigate({
       to: "/otp",

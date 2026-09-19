@@ -1,7 +1,7 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
 import { BrandMark } from "@/components/AppShell";
-import { Check, ArrowRight, ArrowLeft, Loader2, FileText, Upload } from "lucide-react";
+import { Check, ArrowRight, ArrowLeft, Loader2, FileText } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { DEMO_MODE, demoGetOtp } from "@/lib/auth-fns";
 
@@ -156,7 +156,6 @@ function Onboarding() {
   const [form, setForm] = useState<FormData>(EMPTY);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [kycSkipped, setKycSkipped] = useState(false);
 
   const set = (k: keyof FormData, v: string) => setForm((f) => ({ ...f, [k]: v }));
 
@@ -229,7 +228,7 @@ function Onboarding() {
       monthly_turnover: form.monthlyTurnover,
       transactions_per_month: form.transactionsPerMonth,
       referral_source: form.referralSource,
-      kyc_status: kycSkipped ? "skipped" : "none",
+      kyc_status: "none",
       applied_at: new Date().toISOString(),
     };
     sessionStorage.setItem("dealer_draft", JSON.stringify(draft));
@@ -263,7 +262,11 @@ function Onboarding() {
       return;
     }
 
-    if (demoOtp) sessionStorage.setItem("demo_otp", JSON.stringify({ otp: demoOtp, flow: "register", email: form.email }));
+    if (demoOtp)
+      sessionStorage.setItem(
+        "demo_otp",
+        JSON.stringify({ otp: demoOtp, flow: "register", email: form.email }),
+      );
 
     navigate({
       to: "/otp",
@@ -338,16 +341,8 @@ function Onboarding() {
 
             {step === 1 && <Step1 form={form} set={set} />}
             {step === 2 && <Step2 form={form} set={set} />}
-            {step === 3 && (
-              <Step3
-                kycSkipped={kycSkipped}
-                onSkip={() => {
-                  setKycSkipped(true);
-                  setStep(4);
-                }}
-              />
-            )}
-            {step === 4 && <Step4 form={form} kycSkipped={kycSkipped} />}
+            {step === 3 && <Step3 />}
+            {step === 4 && <Step4 form={form} />}
 
             {/* Nav */}
             <div className="mt-8 flex items-center justify-between border-t border-border/60 pt-6">
@@ -530,15 +525,15 @@ function Step2({ form, set }: { form: FormData; set: (k: keyof FormData, v: stri
 // ─── Step 3 — KYC ────────────────────────────────────────────────────────────
 
 const KYC_DOCS = [
-  { name: "PAN Card (Firm or Proprietor)", required: true },
-  { name: "GST Registration Certificate", required: true },
-  { name: "Aadhaar / Passport (Proprietor)", required: true },
-  { name: "Bank statement — last 6 months", required: false },
-  { name: "Cancelled cheque / Bank letter", required: false },
-  { name: "Trade / Shop-act license", required: false },
+  "PAN Card (Firm or Proprietor)",
+  "GST Registration Certificate",
+  "Aadhaar / Passport (Proprietor)",
+  "Bank statement — last 6 months",
+  "Cancelled cheque / Bank letter",
+  "Trade / Shop-act license",
 ];
 
-function Step3({ kycSkipped, onSkip }: { kycSkipped: boolean; onSkip: () => void }) {
+function Step3() {
   return (
     <>
       <div className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
@@ -546,57 +541,27 @@ function Step3({ kycSkipped, onSkip }: { kycSkipped: boolean; onSkip: () => void
       </div>
       <h1 className="mt-2 text-2xl font-semibold tracking-tight">KYC & documents</h1>
       <p className="mt-1 text-sm text-muted-foreground">
-        Upload statutory documents for compliance. You can skip this now and complete it later — but
-        KYC is required for orders, ledger access, and other major features.
+        Compliance is mandatory before you can place orders or access your ledger. You will upload
+        each of the documents below in the next step — right after your email is verified — and they
+        are reviewed within 2 business days.
       </p>
 
       <div className="mt-6 space-y-2">
-        {KYC_DOCS.map((d) => (
+        {KYC_DOCS.map((name) => (
           <div
-            key={d.name}
+            key={name}
             className="flex items-center gap-3 rounded-xl border border-border/60 bg-[var(--surface-2)]/60 px-4 py-3"
           >
             <FileText className="h-4 w-4 shrink-0 text-[var(--platinum)]" />
-            <span className="flex-1 text-sm">{d.name}</span>
-            {d.required && (
-              <span className="rounded-full border border-[var(--warn)]/30 bg-[var(--warn)]/10 px-2 py-0.5 text-[10px] text-[var(--warn)]">
-                Required
-              </span>
-            )}
+            <span className="flex-1 text-sm">{name}</span>
+            <Check className="h-4 w-4 shrink-0 text-[var(--gain)]" />
           </div>
         ))}
       </div>
 
-      <div className="mt-4 rounded-2xl border border-dashed border-border/70 bg-[var(--surface-2)]/40 p-6 text-center">
-        <div className="mx-auto grid h-10 w-10 place-items-center rounded-full bg-[var(--surface-3)]">
-          <Upload className="h-5 w-5 text-[var(--platinum)]" />
-        </div>
-        <div className="mt-3 text-sm">Drop documents here or click to upload</div>
-        <div className="mt-1 text-xs text-muted-foreground">
-          PDF, JPG, PNG · up to 10 MB each · encrypted at rest
-        </div>
-      </div>
-
-      {/* Skip option */}
-      <div className="mt-6 flex items-center gap-3 rounded-xl border border-border/60 bg-[var(--surface-2)]/40 p-4">
-        <div className="min-w-0 flex-1">
-          <div className="text-sm font-medium">
-            {kycSkipped ? "✓ Skipped — you can complete KYC later in Settings" : "Skip KYC for now"}
-          </div>
-          <div className="mt-0.5 text-xs text-muted-foreground">
-            You'll still be able to browse the terminal, but placing orders, viewing the ledger, and
-            certain other features require KYC.
-          </div>
-        </div>
-        {!kycSkipped && (
-          <button
-            type="button"
-            onClick={onSkip}
-            className="shrink-0 rounded-lg border border-border/70 bg-[var(--surface-3)] px-3 py-1.5 text-xs hover:bg-[var(--surface-2)]"
-          >
-            Skip for now
-          </button>
-        )}
+      <div className="mt-6 rounded-xl border border-[var(--warn)]/30 bg-[var(--warn)]/8 p-4 text-sm">
+        Placing orders, viewing the ledger, downloading invoices, and the referral programme are
+        only available after your KYC documents are uploaded and approved.
       </div>
     </>
   );
@@ -604,7 +569,7 @@ function Step3({ kycSkipped, onSkip }: { kycSkipped: boolean; onSkip: () => void
 
 // ─── Step 4 — Review & Submit ─────────────────────────────────────────────────
 
-function Step4({ form, kycSkipped }: { form: FormData; kycSkipped: boolean }) {
+function Step4({ form }: { form: FormData }) {
   const rows: Array<[string, string]> = [
     ["Firm name", form.firmName],
     ["Contact person", form.contactName],
@@ -615,7 +580,7 @@ function Step4({ form, kycSkipped }: { form: FormData; kycSkipped: boolean }) {
     ["Primary metal", form.primaryMetal],
     ["Years in business", form.yearsInBusiness],
     ["Monthly turnover", form.monthlyTurnover],
-    ["KYC", kycSkipped ? "Skip for now — will complete later" : "To be submitted"],
+    ["KYC", "To be submitted after email verification"],
   ].filter((entry): entry is [string, string] => Boolean(entry[1]));
 
   return (
