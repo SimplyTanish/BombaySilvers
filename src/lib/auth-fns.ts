@@ -36,6 +36,7 @@ function rateLimited(key: string, limit: number, windowMs: number): boolean {
 type UserLookupRow = {
   id: string;
   email: string | null;
+  phone: string | null;
   role: string;
 };
 
