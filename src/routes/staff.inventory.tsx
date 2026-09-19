@@ -91,8 +91,8 @@ function StaffInventory() {
           />
         </div>
 
-        {/* Table */}
-        <GlassCard className="overflow-hidden">
+        {/* Table (desktop) */}
+        <GlassCard className="hidden overflow-x-auto md:block">
           <table className="w-full text-sm">
             <thead className="border-b border-border/60 text-[11px] uppercase tracking-widest text-muted-foreground">
               <tr>
@@ -207,6 +207,86 @@ function StaffInventory() {
             </tbody>
           </table>
         </GlassCard>
+
+        {/* Cards (mobile) */}
+        <div className="mt-5 grid gap-3 md:hidden">
+          {isLoading && <div className="p-4 text-sm text-muted-foreground">Loading stock…</div>}
+          {!isLoading && filtered.length === 0 && (
+            <div className="p-4 text-sm text-muted-foreground">No stock matches that search.</div>
+          )}
+          {filtered.map((r) => (
+            <GlassCard key={r.id} className="p-4">
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <div className="font-mono text-[11px] text-muted-foreground">{r.product.sku}</div>
+                  <div className="truncate text-sm font-medium">{r.product.name}</div>
+                  <div className="mt-1 text-xs text-muted-foreground">
+                    {r.warehouse.name} · {r.warehouse.city}
+                  </div>
+                </div>
+                <div className="shrink-0 text-right">
+                  <div className="font-mono text-sm">₹{fmtINR(r.rate_per_gram)}</div>
+                  <div className="text-[10px] uppercase tracking-widest text-muted-foreground">
+                    per gram
+                  </div>
+                </div>
+              </div>
+              <div className="mt-3 flex items-center justify-between gap-2 text-xs">
+                <span className="rounded-full bg-[var(--gain)]/10 px-2 py-0.5 text-[var(--gain)]">
+                  {r.quantity_available} available
+                </span>
+                <span className="rounded-full bg-[var(--warn)]/10 px-2 py-0.5 text-[var(--warn)]">
+                  {r.quantity_reserved} reserved
+                </span>
+              </div>
+              {adjustById === r.id ? (
+                <div className="mt-3 space-y-2">
+                  <div className="flex items-center gap-2">
+                    <input
+                      value={delta}
+                      onChange={(e) => setDelta(e.target.value)}
+                      inputMode="decimal"
+                      placeholder="delta"
+                      className="h-9 w-20 flex-none rounded-lg border border-border/70 bg-[var(--surface-2)] px-2 font-mono text-xs outline-none focus:border-[var(--silver-muted)]"
+                    />
+                    <input
+                      value={reason}
+                      onChange={(e) => setReason(e.target.value)}
+                      placeholder="reason"
+                      className="h-9 min-w-0 flex-1 rounded-lg border border-border/70 bg-[var(--surface-2)] px-2 text-xs outline-none focus:border-[var(--silver-muted)]"
+                    />
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => submitAdjustment(r.id)}
+                      disabled={adjust.isPending}
+                      className="h-9 flex-1 rounded-lg bg-gradient-to-b from-[#f1f1f4] to-[#b6b7bb] text-xs font-medium text-black"
+                    >
+                      {adjust.isPending ? "Saving…" : "Save adjustment"}
+                    </button>
+                    <button
+                      onClick={() => {
+                        setAdjustById(null);
+                        setDelta("");
+                        setReason("");
+                      }}
+                      className="h-9 rounded-lg border border-border/70 px-4 text-xs text-muted-foreground"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <button
+                  onClick={() => setAdjustById(r.id)}
+                  className="mt-3 flex w-full items-center justify-center gap-1 rounded-lg border border-border/70 bg-[var(--surface-2)] px-3 py-2 text-xs hover:bg-[var(--surface-3)]"
+                >
+                  <Plus className="h-3.5 w-3.5" /> Adjust stock
+                </button>
+              )}
+            </GlassCard>
+          ))}
+        </div>
       </AppShell>
     </RequireRole>
   );
