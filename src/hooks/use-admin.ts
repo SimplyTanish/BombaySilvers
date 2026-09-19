@@ -21,7 +21,7 @@ export type AdminDealerRow = {
   credit_limit: number;
   created_at: string;
   user: { full_name: string | null; email: string | null; phone: string | null } | null;
-  firms: { name: string | null; city: string | null } | null;
+  firms: { firm_name: string | null; city: string | null } | null;
   referrals: { count: number } | null;
 };
 
@@ -99,7 +99,7 @@ async function fetchAdminDealers(): Promise<AdminDealerRow[]> {
   const { data, error } = await supabase
     .from("dealers")
     .select(
-      "id, dealer_code, referral_code, status, tier, current_balance, credit_limit, created_at, user:users(full_name, email, phone), firms(name, city), referrals(count)",
+      "id, dealer_code, referral_code, status, tier, current_balance, credit_limit, created_at, user:users(full_name, email, phone), firms(firm_name, city), referrals!referrals_referrer_id_fkey(count)",
     )
     .order("created_at", { ascending: false })
     .limit(50);

@@ -3,6 +3,7 @@ import { useEffect } from "react";
 function registerSWClientSide() {
   const registerSW = async () => {
     if (!("serviceWorker" in navigator)) return;
+    if (import.meta.env.DEV) return;
 
     try {
       const reg = await navigator.serviceWorker.register("/sw.js", {

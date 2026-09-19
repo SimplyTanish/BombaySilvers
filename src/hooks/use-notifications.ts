@@ -17,6 +17,8 @@ export const notificationKeys = {
 };
 
 async function fetchNotifications(): Promise<DbNotification[]> {
+  const session = await supabase.auth.getSession();
+  if (!session.data.session) return [];
   const { data, error } = await supabase
     .from("notifications")
     .select("id, title, body, type, is_read, created_at, metadata")

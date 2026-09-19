@@ -146,9 +146,9 @@ function Admin() {
                     <td className="p-3">
                       <div className="flex items-center gap-3">
                         <div className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-gradient-to-br from-[#d9d9dd] to-[#7a7b7f] font-mono text-[10px] font-bold text-black">
-                          {initials(d.firms?.name ?? d.user?.full_name ?? d.dealer_code)}
+                          {initials(d.firms?.firm_name ?? d.user?.full_name ?? d.dealer_code)}
                         </div>
-                        <span>{d.firms?.name ?? d.user?.full_name ?? d.dealer_code}</span>
+                        <span>{d.firms?.firm_name ?? d.user?.full_name ?? d.dealer_code}</span>
                       </div>
                     </td>
                     <td className="p-3 font-mono text-xs text-muted-foreground">{d.dealer_code}</td>

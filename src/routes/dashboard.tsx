@@ -106,6 +106,8 @@ function Dashboard() {
   const [recentOrders, setRecentOrders] = useState<DisplayOrder[]>([]);
 
   const loadRecentOrders = useCallback(async () => {
+    const session = await supabase.auth.getSession();
+    if (!session.data.session) return;
     const { data, error } = await supabase
       .from("orders")
       .select(

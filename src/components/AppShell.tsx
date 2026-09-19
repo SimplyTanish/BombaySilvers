@@ -19,28 +19,30 @@ import {
 import { NotificationCenter } from "@/components/NotificationCenter";
 import { useAuth } from "@/hooks/use-auth";
 import { useLiveRates } from "@/hooks/use-live-rates";
+import { useLanguage } from "@/hooks/use-language";
+import { LanguageMenuButton, TutorialDialog } from "@/components/Tutorial";
 import { fmtINR, fmtChange } from "@/lib/rates";
 import { Sheet, SheetContent } from "@/components/ui/sheet";
 
 const nav = [
-  { to: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
-  { to: "/inventory", label: "Inventory", icon: Boxes },
-  { to: "/orders", label: "Orders", icon: ScrollText },
-  { to: "/ledger", label: "Ledger", icon: LineChart },
-  { to: "/invoices", label: "Invoices", icon: Receipt },
-  { to: "/referrals", label: "Referrals", icon: Gift },
+  { to: "/dashboard", labelKey: "nav.dashboard", icon: LayoutDashboard },
+  { to: "/inventory", labelKey: "nav.inventory", icon: Boxes },
+  { to: "/orders", labelKey: "nav.orders", icon: ScrollText },
+  { to: "/ledger", labelKey: "nav.ledger", icon: LineChart },
+  { to: "/invoices", labelKey: "nav.invoices", icon: Receipt },
+  { to: "/referrals", labelKey: "nav.referrals", icon: Gift },
 ] as const;
 
 const adminNav = [
-  { to: "/admin", label: "Admin", icon: Users2 },
-  { to: "/security", label: "Security", icon: Shield },
-  { to: "/settings", label: "Settings", icon: Settings },
+  { to: "/admin", labelKey: "nav.admin", icon: Users2 },
+  { to: "/security", labelKey: "nav.security", icon: Shield },
+  { to: "/settings", labelKey: "nav.settings", icon: Settings },
 ] as const;
 
 const staffNav = [
-  { to: "/staff/orders", label: "Order queue", icon: ClipboardCheck },
-  { to: "/staff/inventory", label: "Stock control", icon: Warehouse },
-  { to: "/staff/dealers", label: "Dealer lookup", icon: ContactRound },
+  { to: "/staff/orders", labelKey: "nav.orderQueue", icon: ClipboardCheck },
+  { to: "/staff/inventory", labelKey: "nav.stockControl", icon: Warehouse },
+  { to: "/staff/dealers", labelKey: "nav.dealerLookup", icon: ContactRound },
 ] as const;
 
 export function BrandMark({ compact = false }: { compact?: boolean }) {
@@ -138,6 +140,7 @@ function SidebarNav({
   const displayName = user?.phone
     ? user.phone.replace("+91", "+91 ").replace(/(\+91 )(\d{5})(\d{5})/, "$1$2 $3")
     : (user?.email ?? "Dealer");
+  const { t } = useLanguage();
 
   return (
     <div className="flex h-full flex-col gap-2 p-4">
@@ -145,10 +148,10 @@ function SidebarNav({
         <BrandMark />
       </div>
       <div className="px-1 pb-2 text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
-        Trading
+        {t("nav.trading")}
       </div>
       <nav className="flex flex-col gap-0.5">
-        {nav.map(({ to, label, icon: Icon }) => {
+        {nav.map(({ to, labelKey, icon: Icon }) => {
           const active = pathname === to || pathname.startsWith(to + "/");
           return (
             <Link
@@ -163,7 +166,7 @@ function SidebarNav({
               }
             >
               <Icon className="h-4 w-4" />
-              <span>{label}</span>
+              <span>{t(labelKey)}</span>
             </Link>
           );
         })}
@@ -171,11 +174,11 @@ function SidebarNav({
       {(role === "staff" || role === "admin" || role === "super_admin") && (
         <>
           <div className="mt-4 px-1 pb-2 text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
-            Operations
+            {t("nav.operations")}
           </div>
 
           <nav className="flex flex-col gap-0.5">
-            {staffNav.map(({ to, label, icon: Icon }) => {
+            {staffNav.map(({ to, labelKey, icon: Icon }) => {
               const active = pathname === to;
 
               return (
@@ -191,7 +194,7 @@ function SidebarNav({
                   }
                 >
                   <Icon className="h-4 w-4" />
-                  <span>{label}</span>
+                  <span>{t(labelKey)}</span>
                 </Link>
               );
             })}
@@ -201,11 +204,11 @@ function SidebarNav({
       {(role === "admin" || role === "super_admin") && (
         <>
           <div className="mt-4 px-1 pb-2 text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
-            Operations
+            {t("nav.operations")}
           </div>
 
           <nav className="flex flex-col gap-0.5">
-            {adminNav.map(({ to, label, icon: Icon }) => {
+            {adminNav.map(({ to, labelKey, icon: Icon }) => {
               const active = pathname === to;
 
               return (
@@ -221,7 +224,7 @@ function SidebarNav({
                   }
                 >
                   <Icon className="h-4 w-4" />
-                  <span>{label}</span>
+                  <span>{t(labelKey)}</span>
                 </Link>
               );
             })}
@@ -236,7 +239,7 @@ function SidebarNav({
             </div>
             <div className="min-w-0 flex-1">
               <div className="truncate text-sm font-medium">{displayName}</div>
-              <div className="truncate text-[11px] text-muted-foreground">Dealer account</div>
+              <div className="truncate text-[11px] text-muted-foreground">{t("nav.dealerAccount")}</div>
             </div>
           </div>
         </div>
@@ -245,14 +248,21 @@ function SidebarNav({
           className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm text-muted-foreground transition-colors hover:bg-[var(--surface-2)] hover:text-foreground"
         >
           <LogOut className="h-4 w-4" />
-          Sign out
+          {t("nav.signOut")}
         </button>
       </div>
     </div>
   );
 }
 
-function Topbar({ onMenuClick }: { onMenuClick: () => void }) {
+function Topbar({
+  onMenuClick,
+  onOpenTutorial,
+}: {
+  onMenuClick: () => void;
+  onOpenTutorial: () => void;
+}) {
+  const { t } = useLanguage();
   return (
     <div className="sticky top-0 z-20 border-b border-border/60 bg-background/70 backdrop-blur-xl">
       <div className="flex items-center gap-3 px-4 py-3 lg:px-6">
@@ -266,8 +276,11 @@ function Topbar({ onMenuClick }: { onMenuClick: () => void }) {
         <div className="lg:hidden">
           <BrandMark compact />
         </div>
-        <LiveDot label="Market Open" />
-        <NotificationCenter />
+        <LiveDot label={t("misc.marketOpen")} />
+        <div className="ml-auto flex items-center gap-2">
+          <LanguageMenuButton onOpenTutorial={onOpenTutorial} />
+          <NotificationCenter />
+        </div>
       </div>
       <RateTicker />
     </div>
@@ -277,10 +290,11 @@ function Topbar({ onMenuClick }: { onMenuClick: () => void }) {
 function BottomNav() {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const items = nav.slice(0, 5);
+  const { t } = useLanguage();
   return (
     <nav className="fixed inset-x-0 bottom-0 z-30 border-t border-border/60 bg-background/85 backdrop-blur-xl lg:hidden">
       <div className="mx-auto flex max-w-md items-stretch justify-between px-2 py-2">
-        {items.map(({ to, label, icon: Icon }) => {
+        {items.map(({ to, labelKey, icon: Icon }) => {
           const active = pathname === to || pathname.startsWith(to + "/");
           return (
             <Link key={to} to={to} className="flex flex-1 flex-col items-center gap-1 py-1">
@@ -290,7 +304,7 @@ function BottomNav() {
               <span
                 className={"text-[10px] " + (active ? "text-foreground" : "text-muted-foreground")}
               >
-                {label}
+                {t(labelKey)}
               </span>
               {active && (
                 <span className="h-0.5 w-6 rounded-full bg-gradient-to-r from-transparent via-[var(--platinum)] to-transparent" />
@@ -309,6 +323,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   const navigate = useNavigate();
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [tutorialOpen, setTutorialOpen] = useState(false);
 
   // Auth guard — redirect to login if no session once loading resolves.
   useEffect(() => {
@@ -352,11 +367,15 @@ export function AppShell({ children }: { children: ReactNode }) {
         </Sheet>
 
         <div className="min-w-0 flex-1">
-          <Topbar onMenuClick={() => setSidebarOpen(true)} />
+          <Topbar
+            onMenuClick={() => setSidebarOpen(true)}
+            onOpenTutorial={() => setTutorialOpen(true)}
+          />
           <main className="px-4 pb-28 pt-6 lg:px-8 lg:pb-10">{children}</main>
         </div>
       </div>
       <BottomNav />
+      <TutorialDialog open={tutorialOpen} onClose={() => setTutorialOpen(false)} />
     </div>
   );
 }

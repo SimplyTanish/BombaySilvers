@@ -183,62 +183,6 @@ export const lookupEmailByPhone = createServerFn({ method: "POST" })
     };
   });
 
-/**
- * Look up a dealer's email by their dealer ID (dealer code).
- * Returns the email used for OTP login.
- */
-export const lookupEmailByDealerCode = createServerFn({ method: "POST" })
-  .validator((raw: unknown) => {
-    const d = raw as { dealerCode?: string };
-
-    if (typeof d?.dealerCode !== "string" || !d.dealerCode.trim()) {
-      throw new Error("Dealer ID is required");
-    }
-
-    return {
-      dealerCode: d.dealerCode.trim().toUpperCase(),
-    };
-  })
-  .handler(async ({ data }): Promise<{ found: false } | { found: true; email: string }> => {
-    const admin = createAdminClient() as unknown as AdminClientLike;
-
-    const { data: dealerData, error: dealerError } = await admin
-      .from("dealers")
-      .select("user_id")
-      .eq("dealer_code", data.dealerCode)
-      .maybeSingle();
-
-    const dealer = dealerData as { user_id: string } | null;
-
-    if (dealerError || !dealer) {
-      console.error("Dealer ID lookup failed:", dealerError);
-      return { found: false };
-    }
-
-    const { data: userData, error: userError } = await admin
-      .from("users")
-      .select("email")
-      .eq("id", dealer.user_id)
-      .maybeSingle();
-
-    const user = userData as { email: string | null } | null;
-
-    if (userError || !user) {
-      console.error("User lookup failed for dealer:", dealer.user_id);
-      return { found: false };
-    }
-
-    if (!user.email) {
-      console.error("Dealer account has no email registered:", dealer.user_id);
-      return { found: false };
-    }
-
-    return {
-      found: true,
-      email: user.email,
-    };
-  });
-
 export const saveDealerProfile = createServerFn({ method: "POST" })
   .validator((raw: unknown) => {
     if (!raw || typeof raw !== "object") {

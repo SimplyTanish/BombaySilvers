@@ -2,9 +2,9 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
 
 import { BrandMark } from "@/components/AppShell";
-import { ArrowRight, ShieldCheck, Loader2, WifiOff, IdCard, LockKeyhole } from "lucide-react";
+import { ArrowRight, ShieldCheck, Loader2, WifiOff, LockKeyhole } from "lucide-react";
 import { supabase } from "@/lib/supabase";
-import { lookupEmailByDealerCode, lookupEmailByPhone } from "@/lib/auth-fns";
+import { lookupEmailByPhone } from "@/lib/auth-fns";
 
 export const Route = createFileRoute("/login")({
   head: () => ({ meta: [{ title: "Sign in · Bombay Silvers" }] }),
@@ -21,14 +21,10 @@ function Login() {
   const [adminEmail, setAdminEmail] = useState("");
   const [adminPassword, setAdminPassword] = useState("");
   const [adminLoading, setAdminLoading] = useState(false);
-  const [dealerIdMode, setDealerIdMode] = useState(false);
-  const [dealerCode, setDealerCode] = useState("");
-  const [dealerLoading, setDealerLoading] = useState(false);
   const [adminOpen, setAdminOpen] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (dealerIdMode) return handleDealerIdSubmit(e);
     const cleaned = phone.replace(/\D/g, "").replace(/^0+/, "");
     if (cleaned.length < 10) {
       setError("Enter a valid 10-digit mobile number.");
@@ -63,51 +59,6 @@ function Login() {
       search: {
         email: result.email,
         phone: fullPhone,
-        trust: trustDevice,
-        flow: "login",
-      },
-    });
-  };
-
-  const switchToDealerId = () => {
-    setDealerIdMode(true);
-    setError(null);
-    setNotRegistered(false);
-  };
-
-  const handleDealerIdSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    const code = dealerCode.trim();
-    if (!code) {
-      setError("Enter your dealer ID (e.g. DLR000001).");
-      return;
-    }
-    setDealerLoading(true);
-    setError(null);
-    setNotRegistered(false);
-
-    const result = await lookupEmailByDealerCode({ data: { dealerCode: code } });
-    if (!result.found) {
-      setDealerLoading(false);
-      setError(`No dealer account found for ID "${code}".`);
-      return;
-    }
-
-    const { error: otpErr } = await supabase.auth.signInWithOtp({
-      email: result.email,
-      options: { shouldCreateUser: false },
-    });
-    setDealerLoading(false);
-    if (otpErr) {
-      setError(otpErr.message);
-      return;
-    }
-
-    navigate({
-      to: "/otp",
-      search: {
-        email: result.email,
-        phone: "",
         trust: trustDevice,
         flow: "login",
       },
@@ -206,59 +157,31 @@ function Login() {
                 Welcome back.
               </h1>
               <p className="mt-1 text-sm text-muted-foreground">
-                {dealerIdMode
-                  ? "Enter the dealer ID printed on your account letter."
-                  : "Enter your registered mobile number to continue."}
+                Enter your registered mobile number to continue.
               </p>
 
               <div className="mt-8 space-y-4">
-                {dealerIdMode ? (
-                  <>
-                    <label className="block text-xs font-medium uppercase tracking-wider text-muted-foreground">
-                      Dealer ID
-                    </label>
-                    <div className="flex items-stretch gap-2">
-                      <div className="flex items-center gap-2 rounded-xl border border-border/70 bg-[var(--surface-2)] px-3 font-mono text-sm">
-                        <IdCard className="h-4 w-4 text-[var(--platinum)]" />
-                      </div>
-                      <input
-                        type="text"
-                        value={dealerCode}
-                        onChange={(e) => {
-                          setDealerCode(e.target.value);
-                          setError(null);
-                        }}
-                        placeholder="DLR000001"
-                        autoFocus
-                        className="h-12 flex-1 rounded-xl border border-border/70 bg-[var(--surface-2)] px-4 font-mono text-lg tracking-wider uppercase outline-none focus:border-[var(--silver-muted)]"
-                      />
-                    </div>
-                  </>
-                ) : (
-                  <>
-                    <label className="block text-xs font-medium uppercase tracking-wider text-muted-foreground">
-                      Mobile number
-                    </label>
-                    <div className="flex items-stretch gap-2">
-                      <div className="flex items-center gap-2 rounded-xl border border-border/70 bg-[var(--surface-2)] px-3 font-mono text-sm">
-                        🇮🇳 +91
-                      </div>
-                      <input
-                        type="tel"
-                        value={phone}
-                        onChange={(e) => {
-                          setPhone(e.target.value);
-                          setError(null);
-                          setNotRegistered(false);
-                        }}
-                        placeholder="98765 43210"
-                        maxLength={11}
-                        autoFocus
-                        className="h-12 flex-1 rounded-xl border border-border/70 bg-[var(--surface-2)] px-4 font-mono text-lg tracking-wider outline-none focus:border-[var(--silver-muted)]"
-                      />
-                    </div>
-                  </>
-                )}
+                <label className="block text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                  Mobile number
+                </label>
+                <div className="flex items-stretch gap-2">
+                  <div className="flex items-center gap-2 rounded-xl border border-border/70 bg-[var(--surface-2)] px-3 font-mono text-sm">
+                    🇮🇳 +91
+                  </div>
+                  <input
+                    type="tel"
+                    value={phone}
+                    onChange={(e) => {
+                      setPhone(e.target.value);
+                      setError(null);
+                      setNotRegistered(false);
+                    }}
+                    placeholder="98765 43210"
+                    maxLength={11}
+                    autoFocus
+                    className="h-12 flex-1 rounded-xl border border-border/70 bg-[var(--surface-2)] px-4 font-mono text-lg tracking-wider outline-none focus:border-[var(--silver-muted)]"
+                  />
+                </div>
 
                 {/* Error */}
                 {error && (
@@ -299,10 +222,10 @@ function Login() {
 
                 <button
                   type="submit"
-                  disabled={dealerIdMode ? dealerLoading : loading}
+                  disabled={loading}
                   className="group mt-4 flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-b from-[#f1f1f4] to-[#b6b7bb] font-medium text-black shadow-[inset_0_1px_0_rgba(255,255,255,0.7)] transition-transform hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:opacity-60"
                 >
-                  {(dealerIdMode ? dealerLoading : loading) ? (
+                  {loading ? (
                     <Loader2 className="h-4 w-4 animate-spin" />
                   ) : (
                     <>
@@ -311,33 +234,6 @@ function Login() {
                     </>
                   )}
                 </button>
-
-                <div className="relative py-2 text-center text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
-                  <span className="relative z-10 bg-[var(--surface-1)] px-3">or</span>
-                  <div className="absolute inset-x-0 top-1/2 h-px bg-border/60" />
-                </div>
-
-                {dealerIdMode ? (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setDealerIdMode(false);
-                      setError(null);
-                      setNotRegistered(false);
-                    }}
-                    className="h-11 w-full rounded-xl border border-border/70 bg-[var(--surface-2)] text-sm text-foreground hover:bg-[var(--surface-3)]"
-                  >
-                    Sign in with mobile number
-                  </button>
-                ) : (
-                  <button
-                    type="button"
-                    onClick={switchToDealerId}
-                    className="h-11 w-full rounded-xl border border-border/70 bg-[var(--surface-2)] text-sm text-foreground hover:bg-[var(--surface-3)]"
-                  >
-                    Sign in with dealer ID
-                  </button>
-                )}
 
                 <div className="mt-6 text-center text-xs text-muted-foreground">
                   New to Bombay Silvers?{" "}

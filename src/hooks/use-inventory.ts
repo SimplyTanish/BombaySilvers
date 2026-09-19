@@ -26,6 +26,8 @@ export const inventoryKeys = {
 };
 
 async function fetchInventory(): Promise<SalesInventoryRow[]> {
+  const session = await supabase.auth.getSession();
+  if (!session.data.session) return [];
   const { data, error } = await supabase
     .from("inventory")
     .select(
