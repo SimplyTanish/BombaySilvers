@@ -12,10 +12,26 @@ export const DEMO_MODE = import.meta.env.VITE_DEMO_MODE === "true";
 
 import { createServerFn } from "@tanstack/react-start";
 import type { Enums } from "@/lib/database.types";
+import { cleanDigits, isValidEmail, isValidIndianMobile } from "@/lib/validate";
 
 type BusinessType = Enums<"business_type">;
 type MetalFocus = Enums<"metal_focus">;
 import { createAdminClient } from "@/lib/supabase";
+
+/**
+ * Tiny in-memory rate limiter (per Worker instance).
+ * Not a replacement for edge-level throttling, but it stops scripted abuse of
+ * the server functions (OTP minting, phone/email enumeration).
+ */
+const rateLog: Record<string, number[]> = {};
+function rateLimited(key: string, limit: number, windowMs: number): boolean {
+  const now = Date.now();
+  const hits = (rateLog[key] ??= []);
+  while (hits.length > 0 && now - hits[0] > windowMs) hits.shift();
+  if (hits.length >= limit) return true;
+  hits.push(now);
+  return false;
+}
 
 type UserLookupRow = {
   id: string;
@@ -85,6 +101,7 @@ type AdminClientLike = {
 
 type DealerProfilePayload = {
   user_id: string;
+  access_token: string;
   firm_name: string;
   contact_name: string;
   business_type: BusinessType;
@@ -145,11 +162,25 @@ export const lookupEmailByPhone = createServerFn({ method: "POST" })
       throw new Error("Phone number is required");
     }
 
+    const digits = cleanDigits(d.phone);
+    const number = digits.length === 12 && digits.startsWith("91") ? digits.slice(2) : digits;
+    if (!isValidIndianMobile(number)) {
+      throw new Error("Enter a valid 10-digit mobile number.");
+    }
+
     return {
-      phone: d.phone.trim(),
+      phone: `+91${number}`,
     };
   })
   .handler(async ({ data }): Promise<{ found: false } | { found: true; email: string }> => {
+    // Guard against phone-number enumeration / OTP-trigger spam.
+    if (rateLimited(`lookup:${data.phone}`, 10, 60_000)) {
+      throw new Error("Too many attempts. Please try again shortly.");
+    }
+    if (rateLimited("lookup:global", 240, 60_000)) {
+      throw new Error("Too many attempts. Please try again shortly.");
+    }
+
     const admin = createAdminClient() as unknown as AdminClientLike;
 
     const { data: userData, error: userError } = await admin
@@ -199,8 +230,8 @@ export const lookupEmailByPhone = createServerFn({ method: "POST" })
 export const demoGetOtp = createServerFn({ method: "POST" })
   .validator((raw: unknown) => {
     const d = raw as { flow?: "login" | "register"; email?: string };
-    if (typeof d?.email !== "string" || !d.email.trim()) {
-      throw new Error("Email is required");
+    if (typeof d?.email !== "string" || !isValidEmail(d.email)) {
+      throw new Error("A valid email address is required.");
     }
     return {
       flow: d.flow === "register" ? ("register" as const) : ("login" as const),
@@ -208,6 +239,22 @@ export const demoGetOtp = createServerFn({ method: "POST" })
     };
   })
   .handler(async ({ data }): Promise<{ otp: string } | { error: string }> => {
+    // The resulting code is shown on-screen ONLY in demo builds. Outside demo
+    // mode this endpoint must refuse — otherwise anyone could mint and read an
+    // OTP for any account. The flag is replaced at build time on the server.
+    if (!DEMO_MODE) {
+      return { error: "Verification codes are sent by email in this environment." };
+    }
+
+    // Per-address throttle: max 3 minted codes per 10 minutes per email, and a
+    // low global ceiling to blunt scripted password/OTP harvesting.
+    if (rateLimited(`otp:${data.email}`, 3, 10 * 60_000)) {
+      return { error: "Too many requests. Try again in a few minutes." };
+    }
+    if (rateLimited("otp:global", 60, 10 * 60_000)) {
+      return { error: "Too many requests. Try again in a few minutes." };
+    }
+
     const admin = createAdminClient() as {
       auth: {
         admin: {
@@ -247,6 +294,29 @@ export const saveDealerProfile = createServerFn({ method: "POST" })
       throw new Error("Authenticated user id is required");
     }
 
+    // The end-user's own Supabase access token. The caller must prove they ARE
+    // this user before we write a dealer/firm row linked to that user id.
+    const accessToken = typeof d.access_token === "string" ? d.access_token.trim() : "";
+    if (!accessToken) {
+      throw new Error("Session token is required. Please sign in again.");
+    }
+
+    const email =
+      (typeof d.email === "string" && d.email.trim()) ||
+      (typeof d.email_address === "string" && d.email_address.trim()) ||
+      "";
+    if (email && !isValidEmail(email)) {
+      throw new Error("Enter a valid email address.");
+    }
+
+    const phone =
+      (typeof d.phone === "string" && d.phone.trim()) ||
+      (typeof d.mobile === "string" && d.mobile.trim()) ||
+      "";
+    if (phone && !isValidIndianMobile(phone)) {
+      throw new Error("Enter a valid 10-digit mobile number.");
+    }
+
     const firmName =
       (typeof d.firm_name === "string" && d.firm_name.trim()) ||
       (typeof d.firmName === "string" && d.firmName.trim()) ||
@@ -259,6 +329,7 @@ export const saveDealerProfile = createServerFn({ method: "POST" })
 
     return {
       user_id: userId,
+      access_token: accessToken,
       firm_name: firmName,
       contact_name: contactName,
       business_type: normalizeBusinessType(d.business_type ?? d.businessType),
@@ -283,12 +354,32 @@ export const saveDealerProfile = createServerFn({ method: "POST" })
       gstin: typeof d.gstin === "string" && d.gstin.trim() ? d.gstin.trim() : null,
       pan_number:
         typeof d.pan_number === "string" && d.pan_number.trim() ? d.pan_number.trim() : null,
-      phone: typeof d.phone === "string" && d.phone.trim() ? d.phone.trim() : null,
-      email: typeof d.email === "string" && d.email.trim() ? d.email.trim() : null,
+      phone: phone || null,
+      email: email || null,
     } satisfies DealerProfilePayload;
   })
   .handler(async ({ data }) => {
-    const admin = createAdminClient() as unknown as AdminClientLike;
+    const adminCore = createAdminClient() as unknown as AdminClientLike & {
+      auth: {
+        getUser: (
+          jwt: string,
+        ) => Promise<{ data: { user: { id: string } | null }; error: Error | null }>;
+      };
+    };
+
+    // Prove the caller actually owns the session for the user_id they claim.
+    // Without this, anyone could POST an arbitrary user_id and take over /
+    // overwrite that user's identity row (critical IDOR).
+    const authRes = await adminCore.auth.getUser(data.access_token);
+    const authenticatedId = authRes?.data?.user?.id;
+    if (authRes?.error || !authenticatedId) {
+      throw new Error("Session is invalid or expired. Please sign in again.");
+    }
+    if (authenticatedId !== data.user_id) {
+      throw new Error("Session does not match this profile. Please sign in again.");
+    }
+
+    const admin = adminCore as unknown as AdminClientLike;
 
     const userPayload: UserInsertRow = {
       id: data.user_id,
@@ -298,6 +389,22 @@ export const saveDealerProfile = createServerFn({ method: "POST" })
       role: "dealer",
       is_active: true,
     };
+
+    // Re-verify the identity row can only be claimed once (by its owner).
+    const { data: existingUser } = await admin
+      .from("users")
+      .select("id, email, phone, role")
+      .eq("id", data.user_id)
+      .maybeSingle();
+
+    const existing = existingUser as UserLookupRow | null;
+    if (
+      existing &&
+      ((existing.email != null && existing.email !== data.email) ||
+        (existing.phone != null && existing.phone !== data.phone))
+    ) {
+      throw new Error("This account is already linked to different contact details.");
+    }
 
     const upsertResult = (await admin.from("users").upsert(userPayload, {
       onConflict: "id",

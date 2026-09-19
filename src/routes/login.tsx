@@ -5,6 +5,7 @@ import { BrandMark } from "@/components/AppShell";
 import { ArrowRight, ShieldCheck, Loader2, WifiOff, LockKeyhole } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { DEMO_MODE, demoGetOtp, lookupEmailByPhone } from "@/lib/auth-fns";
+import { cleanDigits, isValidEmail, isValidIndianMobile } from "@/lib/validate";
 
 export const Route = createFileRoute("/login")({
   head: () => ({ meta: [{ title: "Sign in · Bombay Silvers" }] }),
@@ -26,12 +27,11 @@ function Login() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (loading) return;
-    const cleaned = phone.replace(/\D/g, "").replace(/^0+/, "");
-    if (cleaned.length < 10) {
+    if (!isValidIndianMobile(phone)) {
       setError("Enter a valid 10-digit mobile number.");
       return;
     }
-    const fullPhone = `+91${cleaned}`;
+    const fullPhone = `+91${cleanDigits(phone)}`;
     setLoading(true);
     setError(null);
     setNotRegistered(false);
@@ -89,6 +89,10 @@ function Login() {
   const handleAdminLogin = async () => {
     if (!adminEmail.trim() || !adminPassword) {
       setError("Enter your staff email and password.");
+      return;
+    }
+    if (!isValidEmail(adminEmail)) {
+      setError("Enter a valid staff email.");
       return;
     }
     setAdminLoading(true);
@@ -193,12 +197,13 @@ function Login() {
                     type="tel"
                     value={phone}
                     onChange={(e) => {
-                      setPhone(e.target.value);
+                      setPhone(cleanDigits(e.target.value).slice(0, 10));
                       setError(null);
                       setNotRegistered(false);
                     }}
                     placeholder="98765 43210"
-                    maxLength={11}
+                    inputMode="numeric"
+                    maxLength={10}
                     autoFocus
                     className="h-12 flex-1 rounded-xl border border-border/70 bg-[var(--surface-2)] px-4 font-mono text-lg tracking-wider outline-none focus:border-[var(--silver-muted)]"
                   />

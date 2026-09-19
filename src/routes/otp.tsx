@@ -100,10 +100,12 @@ function OTP() {
         if (raw) {
           const draft = JSON.parse(raw) as Record<string, unknown>;
           const { data: userData } = await supabase.auth.getUser();
+          const { data: sessionData } = await supabase.auth.getSession();
           await saveDealerProfile({
             data: {
               ...draft,
               user_id: userData.user?.id ?? "",
+              access_token: sessionData.session?.access_token ?? "",
               phone,
               email,
             },

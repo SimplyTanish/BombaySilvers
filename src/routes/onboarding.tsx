@@ -4,6 +4,7 @@ import { BrandMark } from "@/components/AppShell";
 import { Check, ArrowRight, ArrowLeft, Loader2, FileText } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { DEMO_MODE, demoGetOtp } from "@/lib/auth-fns";
+import { cleanDigits, isValidEmail, isValidIndianMobile } from "@/lib/validate";
 
 export const Route = createFileRoute("/onboarding")({
   head: () => ({ meta: [{ title: "Dealer Application · Bombay Silvers" }] }),
@@ -171,9 +172,8 @@ function Onboarding() {
   const validateStep1 = () => {
     if (!form.firmName.trim()) return "Firm name is required.";
     if (!form.contactName.trim()) return "Contact name is required.";
-    const cleaned = form.phone.replace(/\D/g, "");
-    if (cleaned.length < 10) return "Enter a valid 10-digit mobile number.";
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) return "Enter a valid email address.";
+    if (!isValidIndianMobile(form.phone)) return "Enter a valid 10-digit mobile number.";
+    if (!isValidEmail(form.email)) return "Enter a valid email address.";
     if (!form.state) return "Select a state.";
     return null;
   };
@@ -210,7 +210,7 @@ function Onboarding() {
     setLoading(true);
     setError(null);
 
-    const cleaned = form.phone.replace(/\D/g, "");
+    const cleaned = cleanDigits(form.phone);
     const fullPhone = `+91${cleaned}`;
 
     // Store draft for the OTP page to persist after verification
@@ -340,7 +340,20 @@ function Onboarding() {
               </div>
             )}
 
-            {step === 1 && <Step1 form={form} set={set} />}
+            {step === 1 && (
+              <Step1
+                form={form}
+                set={set}
+                phoneError={
+                  form.phone && !isValidIndianMobile(form.phone)
+                    ? "Enter a valid 10-digit mobile number."
+                    : null
+                }
+                emailError={
+                  form.email && !isValidEmail(form.email) ? "Enter a valid email address." : null
+                }
+              />
+            )}
             {step === 2 && <Step2 form={form} set={set} />}
             {step === 3 && (
               <Step3
@@ -401,7 +414,17 @@ function Onboarding() {
 
 // ─── Step 1 — Contact & Firm ─────────────────────────────────────────────────
 
-function Step1({ form, set }: { form: FormData; set: (k: keyof FormData, v: string) => void }) {
+function Step1({
+  form,
+  set,
+  phoneError,
+  emailError,
+}: {
+  form: FormData;
+  set: (k: keyof FormData, v: string) => void;
+  phoneError: string | null;
+  emailError: string | null;
+}) {
   return (
     <>
       <div className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
@@ -427,17 +450,21 @@ function Step1({ form, set }: { form: FormData; set: (k: keyof FormData, v: stri
         <TextField
           label="Mobile number *"
           value={form.phone}
-          onChange={(v) => set("phone", v)}
+          onChange={(v) => set("phone", cleanDigits(v).slice(0, 10))}
           placeholder="98765 43210"
           type="tel"
+          inputMode="numeric"
+          maxLength={10}
           hint="+91 prefix added automatically"
+          error={phoneError}
         />
         <TextField
           label="Email address *"
           value={form.email}
-          onChange={(v) => set("email", v)}
+          onChange={(v) => set("email", v.trim())}
           placeholder="rahul@mehtabullion.in"
           type="email"
+          error={emailError}
         />
         <TextField
           label="City"
@@ -658,6 +685,9 @@ function TextField({
   placeholder,
   type = "text",
   hint,
+  error,
+  inputMode,
+  maxLength,
 }: {
   label: string;
   value: string;
@@ -665,6 +695,9 @@ function TextField({
   placeholder?: string;
   type?: string;
   hint?: string;
+  error?: string | null;
+  inputMode?: "text" | "numeric" | "tel" | "email" | "decimal";
+  maxLength?: number;
 }) {
   return (
     <div>
@@ -676,9 +709,18 @@ function TextField({
         value={value}
         onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder}
-        className="h-11 w-full rounded-xl border border-border/70 bg-[var(--surface-2)] px-3 text-sm outline-none focus:border-[var(--silver-muted)]"
+        inputMode={inputMode}
+        maxLength={maxLength}
+        className={
+          "h-11 w-full rounded-xl border bg-[var(--surface-2)] px-3 text-sm outline-none focus:border-[var(--silver-muted)] " +
+          (error ? "border-[var(--loss)]" : "border-border/70")
+        }
       />
-      {hint && <p className="mt-1 text-[11px] text-muted-foreground">{hint}</p>}
+      {error ? (
+        <p className="mt-1 text-[11px] text-[var(--loss)]">{error}</p>
+      ) : hint ? (
+        <p className="mt-1 text-[11px] text-muted-foreground">{hint}</p>
+      ) : null}
     </div>
   );
 }
