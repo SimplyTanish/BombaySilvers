@@ -247,12 +247,13 @@ export const demoGetOtp = createServerFn({ method: "POST" })
       return { error: "Verification codes are sent by email in this environment." };
     }
 
-    // Per-address throttle: max 3 minted codes per 10 minutes per email, and a
-    // low global ceiling to blunt scripted password/OTP harvesting.
-    if (rateLimited(`otp:${data.email}`, 3, 10 * 60_000)) {
-      return { error: "Too many requests. Try again in a few minutes." };
+    // Per-address throttle: max 10 minted codes per 5 minutes per email, plus a
+    // global ceiling. Loose enough for real demo/test iteration, tight enough
+    // to stop sustained scripted spraying (production is gated by DEMO_MODE).
+    if (rateLimited(`otp:${data.email}`, 10, 5 * 60_000)) {
+      return { error: "Too many requests. Try again shortly." };
     }
-    if (rateLimited("otp:global", 60, 10 * 60_000)) {
+    if (rateLimited("otp:global", 120, 10 * 60_000)) {
       return { error: "Too many requests. Try again in a few minutes." };
     }
 
