@@ -281,9 +281,9 @@ function Onboarding() {
   };
 
   return (
-    <div className="min-h-screen p-4 sm:p-8">
+    <div className="min-h-screen overflow-x-hidden p-4 sm:p-8">
       <div className="mx-auto max-w-5xl">
-        <div className="mb-8 flex items-center justify-between">
+        <div className="mb-8 flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
           <BrandMark />
           <span className="font-mono text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
             Application · Step {step} of 4
@@ -292,7 +292,7 @@ function Onboarding() {
 
         <div className="grid gap-6 lg:grid-cols-[260px_1fr]">
           {/* Stepper */}
-          <aside className="glass h-fit rounded-2xl p-5">
+          <aside className="glass h-fit min-w-0 rounded-2xl p-5">
             <div className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
               Progress
             </div>
@@ -333,7 +333,7 @@ function Onboarding() {
           </aside>
 
           {/* Form section */}
-          <section className="glass rounded-2xl p-6 sm:p-8">
+          <section className="glass min-w-0 rounded-2xl p-6 sm:p-8">
             {error && (
               <div className="mb-6 rounded-lg border border-[var(--loss)]/30 bg-[var(--loss)]/10 px-4 py-3 text-sm text-[var(--loss)]">
                 {error}
@@ -367,7 +367,7 @@ function Onboarding() {
             {step === 4 && <Step4 form={form} kycSkipped={kycSkipped} />}
 
             {/* Nav */}
-            <div className="mt-8 flex items-center justify-between border-t border-border/60 pt-6">
+            <div className="mt-8 flex flex-wrap items-center justify-between gap-2 border-t border-border/60 pt-6">
               {step > 1 ? (
                 <button
                   onClick={() => {
