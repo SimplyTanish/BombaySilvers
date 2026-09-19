@@ -3,6 +3,13 @@
  * These run on the server so secrets never reach the browser.
  */
 
+/**
+ * Demo preview mode: when no verified sending domain is configured yet, the
+ * verification code is returned to the client and shown on-screen instead of
+ * being emailed. Flip VITE_DEMO_MODE to false once real email sending is set up.
+ */
+export const DEMO_MODE = import.meta.env.VITE_DEMO_MODE === "true";
+
 import { createServerFn } from "@tanstack/react-start";
 import type { Enums } from "@/lib/database.types";
 
@@ -181,6 +188,50 @@ export const lookupEmailByPhone = createServerFn({ method: "POST" })
       found: true,
       email: user.email,
     };
+  });
+
+/**
+ * Demo preview mode: creates the auth user (or refreshes an OTP for an
+ * existing one) and returns the raw 6-digit code to the client so the whole
+ * verification flow can be demoed without real email delivery. Only used when
+ * DEMO_MODE is enabled — prod flow still goes through signInWithOtp → email.
+ */
+export const demoGetOtp = createServerFn({ method: "POST" })
+  .validator((raw: unknown) => {
+    const d = raw as { flow?: "login" | "register"; email?: string };
+    if (typeof d?.email !== "string" || !d.email.trim()) {
+      throw new Error("Email is required");
+    }
+    return {
+      flow: d.flow === "register" ? ("register" as const) : ("login" as const),
+      email: d.email.trim().toLowerCase(),
+    };
+  })
+  .handler(async ({ data }): Promise<{ otp: string } | { error: string }> => {
+    const admin = createAdminClient() as {
+      auth: {
+        admin: {
+          generateLink: (params: unknown) => Promise<{
+            data?: { properties: { email_otp: string } };
+            error?: { message: string } | null;
+          }>;
+        };
+      };
+    };
+
+    const type = "magiclink";
+
+    const { data: linkData, error: linkError } = await admin.auth.admin.generateLink({
+      type,
+      email: data.email,
+    });
+
+    if (linkError || !linkData?.properties?.email_otp) {
+      console.error("demoGetOtp failed:", linkError?.message);
+      return { error: "Couldn't start verification for this address." };
+    }
+
+    return { otp: linkData.properties.email_otp };
   });
 
 export const saveDealerProfile = createServerFn({ method: "POST" })

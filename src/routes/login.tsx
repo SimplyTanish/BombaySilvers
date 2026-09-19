@@ -4,7 +4,7 @@ import { useState } from "react";
 import { BrandMark } from "@/components/AppShell";
 import { ArrowRight, ShieldCheck, Loader2, WifiOff, LockKeyhole } from "lucide-react";
 import { supabase } from "@/lib/supabase";
-import { lookupEmailByPhone } from "@/lib/auth-fns";
+import { DEMO_MODE, demoGetOtp, lookupEmailByPhone } from "@/lib/auth-fns";
 
 export const Route = createFileRoute("/login")({
   head: () => ({ meta: [{ title: "Sign in · Bombay Silvers" }] }),
@@ -25,6 +25,7 @@ function Login() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (loading) return;
     const cleaned = phone.replace(/\D/g, "").replace(/^0+/, "");
     if (cleaned.length < 10) {
       setError("Enter a valid 10-digit mobile number.");
@@ -44,15 +45,31 @@ function Login() {
     }
 
     // Email found → send email OTP (works without Twilio/SMS)
-    const { error: otpErr } = await supabase.auth.signInWithOtp({
-      email: result.email,
-      options: { shouldCreateUser: false },
-    });
+    let otp: string | undefined;
+    let otpErr: string | null = null;
+
+    if (DEMO_MODE) {
+      const res = await demoGetOtp({ data: { flow: "login", email: result.email } });
+      if ("error" in res) {
+        otpErr = res.error;
+      } else {
+        otp = res.otp;
+      }
+    } else {
+      const res = await supabase.auth.signInWithOtp({
+        email: result.email,
+        options: { shouldCreateUser: false },
+      });
+      otpErr = res.error?.message ?? null;
+    }
+
     setLoading(false);
     if (otpErr) {
-      setError(otpErr.message);
+      setError(otpErr);
       return;
     }
+
+    if (otp) sessionStorage.setItem("demo_otp", JSON.stringify({ otp, flow: "login", email: result.email }));
 
     navigate({
       to: "/otp",

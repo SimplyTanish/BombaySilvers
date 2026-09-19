@@ -1,10 +1,10 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { BrandMark } from "@/components/AppShell";
-import { ShieldCheck, ArrowRight, Loader2, Mail } from "lucide-react";
+import { ShieldCheck, ArrowRight, Loader2, Mail, Sparkles } from "lucide-react";
 import { InputOTP, InputOTPGroup, InputOTPSlot } from "@/components/ui/input-otp";
 import { supabase } from "@/lib/supabase";
-import { saveDealerProfile } from "@/lib/auth-fns";
+import { DEMO_MODE, demoGetOtp, saveDealerProfile } from "@/lib/auth-fns";
 
 export const Route = createFileRoute("/otp")({
   head: () => ({ meta: [{ title: "Verify OTP · Bombay Silvers" }] }),
@@ -33,8 +33,33 @@ function OTP() {
   const [otp, setOtp] = useState("");
   const [loading, setLoading] = useState(false);
   const [resending, setResending] = useState(false);
-  const [countdown, setCountdown] = useState(30);
+  const [countdown, setCountdown] = useState(60);
   const [error, setError] = useState<string | null>(null);
+  const [demoOtp, setDemoOtp] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const raw = sessionStorage.getItem("demo_otp");
+    if (!raw) return;
+    try {
+      const parsed = JSON.parse(raw) as { otp?: string; flow?: string; email?: string };
+      if (
+        typeof parsed.otp === "string" &&
+        parsed.otp.length === 6 &&
+        parsed.flow === flow &&
+        parsed.email === email
+      ) {
+        sessionStorage.removeItem("demo_otp");
+        const code = parsed.otp;
+        setDemoOtp(code);
+        setOtp((cur) => cur || code);
+      } else {
+        sessionStorage.removeItem("demo_otp");
+      }
+    } catch {
+      sessionStorage.removeItem("demo_otp");
+    }
+  }, [flow, email]);
 
   // Countdown timer
   useEffect(() => {
@@ -65,6 +90,8 @@ function OTP() {
       setOtp("");
       return;
     }
+
+    sessionStorage.removeItem("demo_otp");
 
     // Registration flow: save dealer profile from sessionStorage
     if (flow === "register") {
@@ -100,12 +127,33 @@ function OTP() {
   const handleResend = async () => {
     if (countdown > 0 || resending || !email) return;
     setResending(true);
-    await supabase.auth.signInWithOtp({
+    setError(null);
+    if (DEMO_MODE) {
+      const res = await demoGetOtp({ data: { flow, email } });
+      if ("error" in res) {
+        setError(res.error);
+      } else {
+        setOtp(res.otp);
+        setDemoOtp(res.otp);
+        sessionStorage.setItem("demo_otp", JSON.stringify({ otp: res.otp, flow, email }));
+      }
+      setResending(false);
+      setCountdown(60);
+      return;
+    }
+    const { error: resendErr } = await supabase.auth.signInWithOtp({
       email,
       options: { shouldCreateUser: flow === "register" },
     });
     setResending(false);
-    setCountdown(30);
+    if (resendErr) {
+      setCountdown(60);
+      setError(resendErr.message && resendErr.message !== "{}"
+        ? resendErr.message
+        : "Too many requests — please wait a minute and try again.");
+      return;
+    }
+    setCountdown(60);
     setOtp("");
     setError(null);
   };
@@ -140,6 +188,22 @@ function OTP() {
             </span>
           </div>
 
+          {DEMO_MODE && demoOtp && (
+            <div className="mt-4 rounded-xl border border-[var(--gain)]/40 bg-[var(--gain)]/10 p-4">
+              <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-[var(--gain)]">
+                <Sparkles className="h-3.5 w-3.5" />
+                Demo preview · no email required
+              </div>
+              <div className="mt-2 text-center font-mono text-2xl font-bold tracking-[0.3em] text-foreground">
+                {demoOtp}
+              </div>
+              <p className="mt-2 text-center text-[11px] text-muted-foreground">
+                In production this code arrives in the buyer's inbox. It's shown here so you can
+                walk through the real flow end-to-end.
+              </p>
+            </div>
+          )}
+
           <div className="mt-8 flex justify-center">
             <InputOTP
               maxLength={6}
@@ -148,7 +212,7 @@ function OTP() {
                 setOtp(val);
                 setError(null);
               }}
-              onComplete={handleVerify}
+              onComplete={DEMO_MODE ? undefined : handleVerify}
             >
               <InputOTPGroup className="gap-2 sm:gap-3">
                 {[0, 1, 2, 3, 4, 5].map((i) => (

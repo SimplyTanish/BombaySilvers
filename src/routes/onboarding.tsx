@@ -3,6 +3,7 @@ import { useState } from "react";
 import { BrandMark } from "@/components/AppShell";
 import { Check, ArrowRight, ArrowLeft, Loader2, FileText, Upload } from "lucide-react";
 import { supabase } from "@/lib/supabase";
+import { DEMO_MODE, demoGetOtp } from "@/lib/auth-fns";
 
 export const Route = createFileRoute("/onboarding")({
   head: () => ({ meta: [{ title: "Dealer Application · Bombay Silvers" }] }),
@@ -234,16 +235,35 @@ function Onboarding() {
     sessionStorage.setItem("dealer_draft", JSON.stringify(draft));
 
     // Send email OTP to create / verify the user
-    const { error: otpErr } = await supabase.auth.signInWithOtp({
-      email: form.email,
-      options: { shouldCreateUser: true },
-    });
+    let otpErr: string | null = null;
+    let demoOtp: string | undefined;
+
+    if (DEMO_MODE) {
+      const res = await demoGetOtp({ data: { flow: "register", email: form.email } });
+      if ("error" in res) {
+        otpErr = res.error;
+      } else {
+        demoOtp = res.otp;
+      }
+    } else {
+      const res = await supabase.auth.signInWithOtp({
+        email: form.email,
+        options: { shouldCreateUser: true },
+      });
+      otpErr = res.error?.message ?? null;
+    }
 
     setLoading(false);
     if (otpErr) {
-      setError(otpErr.message);
+      setError(
+        otpErr && otpErr !== "{}"
+          ? otpErr
+          : "We couldn't send a verification email to that address. Check the email and try again, or contact support.",
+      );
       return;
     }
+
+    if (demoOtp) sessionStorage.setItem("demo_otp", JSON.stringify({ otp: demoOtp, flow: "register", email: form.email }));
 
     navigate({
       to: "/otp",
