@@ -50,6 +50,7 @@ function KYC() {
   const [loadingDocs, setLoadingDocs] = useState(true);
   const [uploading, setUploading] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [skipping, setSkipping] = useState(false);
   const fileInputRef = useRef<{ docType: KycDocType; input: HTMLInputElement | null }>({
     docType: "pan_card",
     input: null,
@@ -131,6 +132,13 @@ function KYC() {
     } finally {
       setUploading(null);
     }
+  };
+
+  const handleSkip = async () => {
+    setSkipping(true);
+    await supabase.auth.updateUser({ data: { kyc_status: "skipped" } });
+    setSkipping(false);
+    navigate({ to: "/dashboard" });
   };
 
   const handleSubmit = async () => {
@@ -271,9 +279,23 @@ function KYC() {
           </div>
 
           <div className="mt-8 flex items-center justify-between border-t border-border/60 pt-6">
-            <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-              <Check className="h-3.5 w-3.5 text-[var(--gain)]" />
-              {uploaded} / {REQUIRED_DOCS.length} documents uploaded
+            <div className="flex items-center gap-3">
+              <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                <Check className="h-3.5 w-3.5 text-[var(--gain)]" />
+                {uploaded} / {REQUIRED_DOCS.length} documents uploaded
+              </div>
+              <button
+                onClick={handleSkip}
+                disabled={skipping}
+                className="flex items-center gap-1.5 rounded-lg border border-border/70 px-3 py-2 text-xs text-muted-foreground hover:bg-[var(--surface-2)] hover:text-foreground disabled:opacity-60"
+              >
+                {skipping ? (
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                ) : (
+                  <Clock className="h-3.5 w-3.5" />
+                )}
+                Skip for now
+              </button>
             </div>
 
             <button

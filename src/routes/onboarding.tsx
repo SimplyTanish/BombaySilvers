@@ -156,6 +156,7 @@ function Onboarding() {
   const [form, setForm] = useState<FormData>(EMPTY);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [kycSkipped, setKycSkipped] = useState(false);
 
   const set = (k: keyof FormData, v: string) => setForm((f) => ({ ...f, [k]: v }));
 
@@ -228,7 +229,7 @@ function Onboarding() {
       monthly_turnover: form.monthlyTurnover,
       transactions_per_month: form.transactionsPerMonth,
       referral_source: form.referralSource,
-      kyc_status: "none",
+      kyc_status: kycSkipped ? "skipped" : "none",
       applied_at: new Date().toISOString(),
     };
     sessionStorage.setItem("dealer_draft", JSON.stringify(draft));
@@ -341,8 +342,16 @@ function Onboarding() {
 
             {step === 1 && <Step1 form={form} set={set} />}
             {step === 2 && <Step2 form={form} set={set} />}
-            {step === 3 && <Step3 />}
-            {step === 4 && <Step4 form={form} />}
+            {step === 3 && (
+              <Step3
+                kycSkipped={kycSkipped}
+                onSkip={() => {
+                  setKycSkipped(true);
+                  setStep(4);
+                }}
+              />
+            )}
+            {step === 4 && <Step4 form={form} kycSkipped={kycSkipped} />}
 
             {/* Nav */}
             <div className="mt-8 flex items-center justify-between border-t border-border/60 pt-6">
@@ -533,7 +542,7 @@ const KYC_DOCS = [
   "Trade / Shop-act license",
 ];
 
-function Step3() {
+function Step3({ kycSkipped, onSkip }: { kycSkipped: boolean; onSkip: () => void }) {
   return (
     <>
       <div className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
@@ -543,7 +552,7 @@ function Step3() {
       <p className="mt-1 text-sm text-muted-foreground">
         Compliance is mandatory before you can place orders or access your ledger. You will upload
         each of the documents below in the next step — right after your email is verified — and they
-        are reviewed within 2 business days.
+        are reviewed within 2 business days. You can skip this now and complete it anytime.
       </p>
 
       <div className="mt-6 space-y-2">
@@ -559,6 +568,30 @@ function Step3() {
         ))}
       </div>
 
+      {/* Skip option */}
+      <div className="mt-6 flex items-center gap-3 rounded-xl border border-border/60 bg-[var(--surface-2)]/40 p-4">
+        <div className="min-w-0 flex-1">
+          <div className="text-sm font-medium">
+            {kycSkipped
+              ? "✓ Skipped — you can complete KYC anytime in the terminal"
+              : "Skip KYC for now"}
+          </div>
+          <div className="mt-0.5 text-xs text-muted-foreground">
+            You'll still be able to browse the terminal, but placing orders, viewing the ledger, and
+            downloading invoices require KYC.
+          </div>
+        </div>
+        {!kycSkipped && (
+          <button
+            type="button"
+            onClick={onSkip}
+            className="shrink-0 rounded-lg border border-border/70 bg-[var(--surface-3)] px-3 py-1.5 text-xs hover:bg-[var(--surface-2)]"
+          >
+            Skip for now
+          </button>
+        )}
+      </div>
+
       <div className="mt-6 rounded-xl border border-[var(--warn)]/30 bg-[var(--warn)]/8 p-4 text-sm">
         Placing orders, viewing the ledger, downloading invoices, and the referral programme are
         only available after your KYC documents are uploaded and approved.
@@ -569,7 +602,7 @@ function Step3() {
 
 // ─── Step 4 — Review & Submit ─────────────────────────────────────────────────
 
-function Step4({ form }: { form: FormData }) {
+function Step4({ form, kycSkipped }: { form: FormData; kycSkipped: boolean }) {
   const rows: Array<[string, string]> = [
     ["Firm name", form.firmName],
     ["Contact person", form.contactName],
@@ -580,7 +613,12 @@ function Step4({ form }: { form: FormData }) {
     ["Primary metal", form.primaryMetal],
     ["Years in business", form.yearsInBusiness],
     ["Monthly turnover", form.monthlyTurnover],
-    ["KYC", "To be submitted after email verification"],
+    [
+      "KYC",
+      kycSkipped
+        ? "Skip for now — will complete later"
+        : "To be submitted after email verification",
+    ],
   ].filter((entry): entry is [string, string] => Boolean(entry[1]));
 
   return (
